@@ -1,1 +1,30 @@
-dXNpbmcgVW5pdHlFbmdpbmU7CnVzaW5nIFVuaXR5RW5naW5lLlVJOwoKcHVibGljIGNsYXNzIFNoaXBTZWxlY3RvciA6IE1vbm9iZWhhdmlvdXIKewogICAgcHVibGljIEdPT1tcaXBQaXJhdGUgTWFpblNoaXAiXTsKICAgIHB1YmxpYyBCdXR0b24gc2VsZWN0QnV0dG9uOwoKICAgIHByaXZhdGUgaW50IHNlbGVjdGVkSW5kZXggPSAwOwoKICAgIHZvaWQgU3RhcnQoKQogICAgewogICAgICAgIC8vIEhpZGUgYWxsIHNoaXBzIGluaXRpYWxseQogICAgICAgIGZvciAoaW50IGkgPSAwOyBpIDwgc2hpcHMuTGVuZ3RoOyBpKyspCiAgICAgICAgewogICAgICAgICAgICBzaGlwc1tpXS5zZXRBY3RpdmUoZmFsc2UpOwogICAgICAgIH0KCiAgICAgICAgLy8gU2hvdyB0aGUgZmlyc3Qgc2hpcCBhbmQgZW5hYmxlIHNlbGVjdGlvbgogICAgICAgIHNoaXBzW3NlbGVjdGVkSW5kZXhdLnNldEFjdGl2ZSh0cnVlKTsKICAgICAgICBzZWxlY3RCdXR0b24ub25DbGljay5BZGRMaXN0ZW5lcihTZWxlY3ROZXh0U2hpcCk7CiAgICB9CgogICAgdm9pZCBTZWxlY3ROZXh0U2hpcCgpCiAgICB7CiAgICAgICAgLy8gRGVhY3RpdmF0ZSB0aGUgY3VycmVudGx5IHNlbGVjdGVkIHNoaXAKICAgICAgICBzaGlwc1tzZWxlY3RlZEluZGV4XS5zZXRBY3RpdmUoZmFsc2UpOwoKICAgICAgICAvLyBNb3ZlIHRvIHRoZSBuZXh0IHNoaXAgaW4gdGhlIGFycmF5CiAgICAgICAgc2VsZWN0ZWRJbmRleCA9IChzZWxlY3RlZEluZGV4ICsgMSkgJSBzaGlwcy5MZW5ndGg7CiAgICAgICAgc2hpcHNbc2VsZWN0ZWRJbmRleF0uc2V0QWN0aXZlKHRydWUpOwogICAgfQp9
+using UnityEngine;
+using UnityEngine.UI;
+
+public class ShipSelector : MonoBehaviour
+{
+    public GameObject[] ships;
+    public Button selectButton;
+    private int selectedIndex = 0;
+
+    void Start()
+    {
+        // Hide all ships initially
+        foreach (GameObject ship in ships)
+            ship.SetActive(false);
+
+        // Show the first ship and enable selection
+        ships[selectedIndex].SetActive(true);
+        selectButton.onClick.AddListener(SelectNextShip);
+    }
+
+    void SelectNextShip()
+    {
+        // Deactivate the currently selected ship
+        ships[selectedIndex].SetActive(false);
+
+        // Move to the next ship in the array
+        selectedIndex = (selectedIndex + 1) % ships.Length;
+        ships[selectedIndex].SetActive(true);
+    }
+}
