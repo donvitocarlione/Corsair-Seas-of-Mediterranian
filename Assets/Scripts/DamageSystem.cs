@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.Events;
+using System.Collections.Generic;
 
 public class DamageSystem : MonoBehaviour
 {
@@ -8,6 +10,10 @@ public class DamageSystem : MonoBehaviour
         public string zoneName;
         public float damageMultiplier = 1f;
         public bool isCriticalZone = false;
+        public float currentHealth = 100f;
+        public float maxHealth = 100f;
+        public GameObject visualDamageEffect;  // Visual effect for this zone
+        public bool isRepairable = true;
     }
 
     [Header("Damage Zones")]
@@ -17,34 +23,68 @@ public class DamageSystem : MonoBehaviour
     public float criticalHitMultiplier = 2f;
     public float criticalHitChance = 0.1f;
 
+    [Header("Effects")]
+    public GameObject fireEffect;
+    public GameObject waterSprayEffect;
+    public AudioClip hitSound;
+    public AudioClip criticalHitSound;
+
+    [Header("Events")]
+    public UnityEvent onCriticalHit;
+    public UnityEvent onZoneDestroyed;
+
     private Ship shipReference;
+    private AudioSource audioSource;
+    private Dictionary<string, GameObject> activeEffects = new Dictionary<string, GameObject>();
 
     void Start()
+    {
+        InitializeComponents();
+        InitializeDamageZones();
+    }
+
+    private void InitializeComponents()
     {
         shipReference = GetComponent<Ship>();
         if (shipReference == null)
         {
             Debug.LogError("DamageSystem requires a Ship component!");
             enabled = false;
+            return;
+        }
+
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
         }
     }
 
-    public float CalculateDamage(float baseDamage, string hitZone)
+    private void InitializeDamageZones()
+    {
+        foreach (var zone in damageZones)
+        {
+            zone.currentHealth = zone.maxHealth;
+        }
+    }
+
+    public float CalculateDamage(float baseDamage, string hitZone, out bool isCritical)
     {
         float finalDamage = baseDamage;
+        isCritical = false;
 
-        // Find the damage zone that was hit
         DamageZone zone = System.Array.Find(damageZones, z => z.zoneName == hitZone);
         
         if (zone != null)
         {
             finalDamage *= zone.damageMultiplier;
             
-            // Check for critical hit in critical zones
             if (zone.isCriticalZone && Random.value < criticalHitChance)
             {
+                isCritical = true;
                 finalDamage *= criticalHitMultiplier;
-                Debug.Log($"Critical hit on {zone.zoneName}!");
+                onCriticalHit?.Invoke();
+                PlayCriticalHitEffects(zone);
             }
         }
 
@@ -53,31 +93,107 @@ public class DamageSystem : MonoBehaviour
 
     public void TakeDamageInZone(float damage, string zoneName)
     {
-        if (shipReference != null)
+        if (shipReference == null) return;
+
+        bool isCritical;
+        float calculatedDamage = CalculateDamage(damage, zoneName, out isCritical);
+        
+        DamageZone zone = System.Array.Find(damageZones, z => z.zoneName == zoneName);
+        if (zone != null)
         {
-            float calculatedDamage = CalculateDamage(damage, zoneName);
-            shipReference.TakeDamage(calculatedDamage);
+            zone.currentHealth -= calculatedDamage;
             
-            Debug.Log($"Ship took {calculatedDamage} damage in {zoneName}");
+            if (zone.currentHealth <= 0 && !activeEffects.ContainsKey(zoneName))
+            {
+                ZoneDestroyed(zone);
+            }
+            else
+            {
+                PlayHitEffects(zone, isCritical);
+            }
+
+            shipReference.TakeDamage(calculatedDamage);
         }
     }
 
-    public void ApplyDamageOverTime(float damagePerSecond, float duration)
+    private void ZoneDestroyed(DamageZone zone)
     {
-        StartCoroutine(DamageOverTimeCoroutine(damagePerSecond, duration));
+        onZoneDestroyed?.Invoke();
+        
+        if (fireEffect != null)
+        {
+            GameObject effect = Instantiate(fireEffect, transform.position, Quaternion.identity);
+            effect.transform.parent = transform;
+            activeEffects[zone.zoneName] = effect;
+        }
+
+        if (zone.zoneName.ToLower().Contains("hull"))
+        {
+            StartCoroutine(DamageOverTimeCoroutine(10f, 999f)); // Continuous hull damage
+        }
+    }
+
+    private void PlayHitEffects(DamageZone zone, bool isCritical)
+    {
+        if (zone.visualDamageEffect != null)
+        {
+            Instantiate(zone.visualDamageEffect, transform.position, Quaternion.identity);
+        }
+
+        if (audioSource != null)
+        {
+            audioSource.PlayOneShot(isCritical ? criticalHitSound : hitSound);
+        }
+    }
+
+    private void PlayCriticalHitEffects(DamageZone zone)
+    {
+        // Additional critical hit effects
+        if (zone.visualDamageEffect != null)
+        {
+            var effect = Instantiate(zone.visualDamageEffect, transform.position, Quaternion.identity);
+            var particleSystem = effect.GetComponent<ParticleSystem>();
+            if (particleSystem != null)
+            {
+                var main = particleSystem.main;
+                main.startSizeMultiplier *= 2f; // Bigger effect for critical hits
+            }
+        }
+    }
+
+    public void RepairZone(string zoneName, float repairAmount)
+    {
+        DamageZone zone = System.Array.Find(damageZones, z => z.zoneName == zoneName);
+        if (zone != null && zone.isRepairable)
+        {
+            zone.currentHealth = Mathf.Min(zone.currentHealth + repairAmount, zone.maxHealth);
+            
+            if (zone.currentHealth > 0 && activeEffects.ContainsKey(zoneName))
+            {
+                Destroy(activeEffects[zoneName]);
+                activeEffects.Remove(zoneName);
+
+                if (waterSprayEffect != null)
+                {
+                    Instantiate(waterSprayEffect, transform.position, Quaternion.identity);
+                }
+            }
+        }
+    }
+
+    public float GetZoneHealthPercentage(string zoneName)
+    {
+        DamageZone zone = System.Array.Find(damageZones, z => z.zoneName == zoneName);
+        return zone != null ? (zone.currentHealth / zone.maxHealth) * 100f : 0f;
     }
 
     private System.Collections.IEnumerator DamageOverTimeCoroutine(float damagePerSecond, float duration)
     {
         float elapsed = 0f;
         
-        while (elapsed < duration)
+        while (elapsed < duration && shipReference != null)
         {
-            if (shipReference != null)
-            {
-                shipReference.TakeDamage(damagePerSecond * Time.deltaTime);
-            }
-            
+            shipReference.TakeDamage(damagePerSecond * Time.deltaTime);
             elapsed += Time.deltaTime;
             yield return null;
         }
