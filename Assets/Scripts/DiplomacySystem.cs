@@ -20,30 +20,30 @@ public class DiplomacySystem : MonoBehaviour
     private void InitializeRelationships()
     {
         // Major Political Alignments
-        SetRelationship(FactionType.Federation, FactionType.Vulcans, Relationship.Friendly);
-        SetRelationship(FactionType.Federation, FactionType.Andorians, Relationship.Friendly);
+        SetRelationship(FactionType.Venetians, FactionType.Spanish, Relationship.Friendly);
+        SetRelationship(FactionType.Venetians, FactionType.Knights, Relationship.Friendly);
         
         // Traditional Rivalries
-        SetRelationship(FactionType.Federation, FactionType.Klingons, Relationship.Hostile);
-        SetRelationship(FactionType.Federation, FactionType.Romulans, Relationship.Hostile);
-        SetRelationship(FactionType.Federation, FactionType.BorgCollective, Relationship.Hostile);
+        SetRelationship(FactionType.Ottoman, FactionType.Venetians, Relationship.Hostile);
+        SetRelationship(FactionType.Ottoman, FactionType.Spanish, Relationship.Hostile);
+        SetRelationship(FactionType.Ottoman, FactionType.Knights, Relationship.Hostile);
         
         // Commercial Relations
-        SetRelationship(FactionType.Ferengi, FactionType.Federation, Relationship.Neutral);
-        SetRelationship(FactionType.Ferengi, FactionType.Klingons, Relationship.Neutral);
+        SetRelationship(FactionType.Merchants, FactionType.Venetians, Relationship.Neutral);
+        SetRelationship(FactionType.Merchants, FactionType.Ottoman, Relationship.Neutral);
         
         // Strategic Alliances
-        SetRelationship(FactionType.Cardassians, FactionType.Dominion, Relationship.Friendly);
-        SetRelationship(FactionType.Romulans, FactionType.Cardassians, Relationship.Friendly);
+        SetRelationship(FactionType.Barbary, FactionType.Ottoman, Relationship.Friendly);
+        SetRelationship(FactionType.Spanish, FactionType.Knights, Relationship.Friendly);
         
-        // Isolationist Stances
-        SetRelationship(FactionType.TholianAssembly, FactionType.Federation, Relationship.Hostile);
-        SetRelationship(FactionType.TholianAssembly, FactionType.Klingons, Relationship.Hostile);
+        // Pirate Relations
+        SetRelationship(FactionType.Pirates, FactionType.Merchants, Relationship.Hostile);
+        SetRelationship(FactionType.Pirates, FactionType.Venetians, Relationship.Hostile);
         
-        // The Borg vs Everyone
-        SetRelationship(FactionType.BorgCollective, FactionType.Klingons, Relationship.Hostile);
-        SetRelationship(FactionType.BorgCollective, FactionType.Romulans, Relationship.Hostile);
-        SetRelationship(FactionType.BorgCollective, FactionType.Cardassians, Relationship.Hostile);
+        // Genoese Relations
+        SetRelationship(FactionType.Genoese, FactionType.Ottoman, Relationship.Neutral);
+        SetRelationship(FactionType.Genoese, FactionType.Venetians, Relationship.Hostile);
+        SetRelationship(FactionType.Genoese, FactionType.Spanish, Relationship.Neutral);
     }
 
     public void SetRelationship(FactionType factionA, FactionType factionB, Relationship relationship)
