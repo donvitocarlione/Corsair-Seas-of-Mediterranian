@@ -1,14 +1,11 @@
 public enum FactionType
 {
-    Federation,
-    Klingons,
-    Romulans,
-    Ferengi,
-    Cardassians,
-    Dominion,
-    Vulcans,
-    Andorians,
-    BorgCollective,
-    TholianAssembly,
-    // Add other factions here
+    Venetians,
+    Ottoman,
+    Spanish,
+    Barbary,
+    Knights,    // Knights of Malta
+    Genoese,
+    Pirates,
+    Merchants
 }
