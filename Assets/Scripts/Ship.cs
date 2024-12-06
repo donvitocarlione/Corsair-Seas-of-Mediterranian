@@ -20,17 +20,12 @@ public class Ship : MonoBehaviour
     public float attackRange = 10f;
     public float attackDamage = 15f;
     public float attackCooldown = 2f;
-    public float armorDegradationRate = 0.1f; // How quickly armor degrades when hit
     private float lastAttackTime;
 
-    [Header("Effects")]
-    public GameObject hitEffect; // Optional hit effect prefab
-    public AudioClip hitSound; // Optional hit sound
-    
     private ShipMovement movement;
     private Rigidbody rb;
     private Buoyancy buoyancy;
-    private AudioSource audioSource;
+    private DamageSystem damageSystem;
 
     void Awake()
     {
@@ -71,14 +66,11 @@ public class Ship : MonoBehaviour
                 buoyancy = gameObject.AddComponent<Buoyancy>();
             }
 
-            // Setup Audio
-            audioSource = GetComponent<AudioSource>();
-            if (audioSource == null && hitSound != null)
+            // Setup DamageSystem
+            damageSystem = GetComponent<DamageSystem>();
+            if (damageSystem == null)
             {
-                audioSource = gameObject.AddComponent<AudioSource>();
-                audioSource.spatialBlend = 1f; // 3D sound
-                audioSource.maxDistance = 50f;
-                audioSource.rolloffMode = AudioRolloffMode.Linear;
+                damageSystem = gameObject.AddComponent<DamageSystem>();
             }
         }
         catch (Exception e)
@@ -112,32 +104,25 @@ public class Ship : MonoBehaviour
         return Time.time - lastAttackTime >= attackCooldown;
     }
 
-    public void Attack(Ship target)
+    public void Attack(Ship target, string targetZone = "Hull")
     {
         if (!CanAttack() || target == null) return;
 
         float distance = Vector3.Distance(transform.position, target.transform.position);
         if (distance <= attackRange)
         {
-            target.TakeDamage(attackDamage);
+            // Use the damage system to apply damage to a specific zone
+            target.TakeDamageInZone(attackDamage, targetZone);
             lastAttackTime = Time.time;
         }
     }
 
     public void TakeDamage(float damage)
     {
-        if (currentArmor > 0)
-        {
-            // Armor reduces damage and degrades
-            float armorDamage = Mathf.Min(damage, currentArmor);
-            currentArmor = Mathf.Max(0, currentArmor - (armorDamage * armorDegradationRate));
-            damage = Mathf.Max(0, damage - armorDamage);
-        }
-
+        // This method is called by the DamageSystem after calculating zone-specific damage
         if (damage > 0)
         {
             currentHealth = Mathf.Max(0, currentHealth - damage);
-            PlayHitEffects();
 
             if (currentHealth <= 0)
             {
@@ -146,16 +131,16 @@ public class Ship : MonoBehaviour
         }
     }
 
-    private void PlayHitEffects()
+    public void TakeDamageInZone(float damage, string zoneName)
     {
-        if (hitEffect != null)
+        if (damageSystem != null)
         {
-            Instantiate(hitEffect, transform.position, Quaternion.identity);
+            damageSystem.TakeDamageInZone(damage, zoneName);
         }
-
-        if (audioSource != null && hitSound != null)
+        else
         {
-            audioSource.PlayOneShot(hitSound);
+            // Fallback to basic damage if no damage system
+            TakeDamage(damage);
         }
     }
 
@@ -203,5 +188,13 @@ public class Ship : MonoBehaviour
     public float GetArmorPercentage()
     {
         return currentArmor / maxArmor * 100f;
+    }
+
+    public void ApplyDamageOverTime(float damagePerSecond, float duration)
+    {
+        if (damageSystem != null)
+        {
+            damageSystem.ApplyDamageOverTime(damagePerSecond, duration);
+        }
     }
 }
