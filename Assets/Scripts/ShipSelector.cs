@@ -5,7 +5,8 @@ public class ShipSelector : MonoBehaviour
 {
     public static ShipSelector Instance { get; private set; }
     public Material selectedMaterial;
-    public FactionType playerFaction;
+    [SerializeField]
+    public FactionType playerFaction = FactionType.Pirates;
     
     private List<Ship> selectedShips = new List<Ship>();
     private Camera mainCamera;
@@ -13,8 +14,16 @@ public class ShipSelector : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        if (Instance == null)
+        {
+            Instance = this;
+            if (!System.Enum.IsDefined(typeof(FactionType), playerFaction))
+            {
+                Debug.LogError("Player faction not set in ShipSelector!");
+            }
+        }
+        else 
+            Destroy(gameObject);
         
         mainCamera = Camera.main;
         waterLayer = LayerMask.GetMask("Water");
