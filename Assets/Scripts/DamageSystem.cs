@@ -116,6 +116,11 @@ public class DamageSystem : MonoBehaviour
         }
     }
 
+    public void ApplyDamageOverTime(float damagePerSecond, float duration)
+    {
+        StartCoroutine(DamageOverTimeCoroutine(damagePerSecond, duration));
+    }
+
     private void ZoneDestroyed(DamageZone zone)
     {
         onZoneDestroyed?.Invoke();
@@ -129,7 +134,7 @@ public class DamageSystem : MonoBehaviour
 
         if (zone.zoneName.ToLower().Contains("hull"))
         {
-            StartCoroutine(DamageOverTimeCoroutine(10f, 999f)); // Continuous hull damage
+            ApplyDamageOverTime(10f, 999f); // Continuous hull damage
         }
     }
 
