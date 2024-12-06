@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-[System.Serializable] // This is important; it allows for using the member in the Inspector
+[System.Serializable]
 public class FactionData
 {
     public FactionType faction;
@@ -10,15 +10,18 @@ public class FactionData
 
 public class FactionManager : MonoBehaviour
 {
+    public static FactionManager Instance { get; private set; }
     public Dictionary<FactionType, FactionData> factions = new Dictionary<FactionType, FactionData>();
 
     void Awake()
-    
     {
+        if (Instance == null)
+            Instance = this;
+        else
+            Destroy(gameObject);
+            
         InitializeFactions();
     }
-
-    void Start() {  } 
 
     public void InitializeFactions()
     {
@@ -28,11 +31,20 @@ public class FactionManager : MonoBehaviour
         }
     }
 
+    public void SetupShip(Ship ship, FactionType faction, string shipName)
+    {
+        ship.Initialize(faction, shipName);
+        RegisterShip(faction, ship);
+    }
+
     public void RegisterShip(FactionType faction, Ship ship)
     {
         if (factions.TryGetValue(faction, out FactionData factionData))
         {
-            factionData.ships.Add(ship);
+            if (!factionData.ships.Contains(ship))
+            {
+                factionData.ships.Add(ship);
+            }
         }
         else
         {
