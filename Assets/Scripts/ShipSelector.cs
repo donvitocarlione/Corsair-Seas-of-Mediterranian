@@ -6,7 +6,7 @@ public class ShipSelector : MonoBehaviour
     public static ShipSelector Instance { get; private set; }
     public Material selectedMaterial;
     
-    // Changed to match PlayerPirate's faction by default
+    // Changed to private - will get from PlayerPirate
     private FactionType playerFaction;
     private List<Ship> selectedShips = new List<Ship>();
     private Camera mainCamera;
