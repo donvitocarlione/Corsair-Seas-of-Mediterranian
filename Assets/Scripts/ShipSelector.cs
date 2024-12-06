@@ -5,8 +5,8 @@ public class ShipSelector : MonoBehaviour
 {
     public static ShipSelector Instance { get; private set; }
     public Material selectedMaterial;
+    public LayerMask selectableLayer; // Layer mask for objects that can be selected
     
-    // Changed to private - will get from PlayerPirate
     private FactionType playerFaction;
     private List<Ship> selectedShips = new List<Ship>();
     private Camera mainCamera;
@@ -19,8 +19,8 @@ public class ShipSelector : MonoBehaviour
             Instance = this;
             mainCamera = Camera.main;
             waterLayer = LayerMask.GetMask("Water");
+            selectableLayer = LayerMask.GetMask("Ship", "Default"); // Add layers that contain selectable objects
             
-            // Get player faction from PlayerPirate
             var playerPirate = FindObjectOfType<PlayerPirate>();
             if (playerPirate != null)
             {
@@ -55,13 +55,21 @@ public class ShipSelector : MonoBehaviour
     void HandleSelection()
     {
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        Debug.Log("Casting ray for selection...");
+        Debug.DrawRay(ray.origin, ray.direction * 100f, Color.red, 1f); // Visualize the ray
         
-        if (Physics.Raycast(ray, out RaycastHit hit))
+        if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, selectableLayer))
         {
-            Debug.Log($"Hit object: {hit.collider.gameObject.name}");
+            Debug.Log($"Hit object: {hit.collider.gameObject.name} on layer: {LayerMask.LayerToName(hit.collider.gameObject.layer)}");
             
+            // First try to get Ship component from the hit object
             Ship ship = hit.collider.GetComponent<Ship>();
+            
+            // If not found, try to get it from the parent
+            if (ship == null)
+            {
+                ship = hit.collider.GetComponentInParent<Ship>();
+            }
+            
             if (ship != null)
             {
                 Debug.Log($"Found ship with faction: {ship.faction}, Player faction: {playerFaction}");
@@ -69,7 +77,7 @@ public class ShipSelector : MonoBehaviour
                 if (ship.faction == playerFaction)
                 {
                     Debug.Log("Faction match - processing selection");
-                    if (Input.GetKey(KeyCode.LeftControl))
+                    if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
                     {
                         ToggleSelection(ship);
                     }
@@ -87,13 +95,13 @@ public class ShipSelector : MonoBehaviour
             }
             else
             {
-                Debug.Log("No Ship component found on hit object");
+                Debug.Log("No Ship component found on hit object or its parents");
                 DeselectAll();
             }
         }
         else
         {
-            Debug.Log("Ray didn't hit anything");
+            Debug.Log("Ray didn't hit anything on selectable layers");
         }
     }
 
@@ -106,19 +114,24 @@ public class ShipSelector : MonoBehaviour
         }
 
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        Debug.DrawRay(ray.origin, ray.direction * 100f, Color.blue, 1f); // Visualize the movement ray
+        
         if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, waterLayer))
         {
             Debug.Log($"Moving selected ships to position: {hit.point}");
             foreach (Ship ship in selectedShips)
             {
-                var movement = ship.GetComponent<ShipMovement>();
-                if (movement != null)
+                if (ship != null) // Add null check
                 {
-                    movement.SetTargetPosition(hit.point);
-                }
-                else
-                {
-                    Debug.LogError($"ShipMovement component missing on ship: {ship.name}");
+                    var movement = ship.GetComponent<ShipMovement>();
+                    if (movement != null)
+                    {
+                        movement.SetTargetPosition(hit.point);
+                    }
+                    else
+                    {
+                        Debug.LogError($"ShipMovement component missing on ship: {ship.name}");
+                    }
                 }
             }
         }
@@ -126,7 +139,7 @@ public class ShipSelector : MonoBehaviour
 
     void SelectShip(Ship ship)
     {
-        if (!selectedShips.Contains(ship))
+        if (ship != null && !selectedShips.Contains(ship))
         {
             selectedShips.Add(ship);
             var selection = ship.GetComponent<ShipSelection>();
@@ -144,7 +157,7 @@ public class ShipSelector : MonoBehaviour
 
     void DeselectShip(Ship ship)
     {
-        if (selectedShips.Contains(ship))
+        if (ship != null && selectedShips.Contains(ship))
         {
             selectedShips.Remove(ship);
             var selection = ship.GetComponent<ShipSelection>();
@@ -170,12 +183,15 @@ public class ShipSelector : MonoBehaviour
 
     void DeselectAll()
     {
-        foreach (Ship ship in selectedShips)
+        foreach (Ship ship in new List<Ship>(selectedShips)) // Create a copy to avoid modification during iteration
         {
-            var selection = ship.GetComponent<ShipSelection>();
-            if (selection != null)
+            if (ship != null)
             {
-                selection.SetSelected(false, selectedMaterial);
+                var selection = ship.GetComponent<ShipSelection>();
+                if (selection != null)
+                {
+                    selection.SetSelected(false, selectedMaterial);
+                }
             }
         }
         selectedShips.Clear();
