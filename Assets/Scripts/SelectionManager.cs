@@ -2,21 +2,20 @@ using UnityEngine;
 
 public class SelectionManager : MonoBehaviour
 {
-    public GameObject selectionIndicatorPrefab;
-    private GameObject currentIndicator;
-    private static SelectionManager instance;
+    public static SelectionManager Instance { get; private set; }
 
-    public static SelectionManager Instance
-    {
-        get { return instance; }
-    }
+    [Header("References")]
+    public GameObject selectionIndicatorPrefab;
+
+    private GameObject currentIndicator;
+    private bool isInitialized = false;
 
     void Awake()
     {
-        if (instance == null)
+        if (Instance == null)
         {
-            instance = this;
-            DontDestroyOnLoad(gameObject);
+            Instance = this;
+            Initialize();
         }
         else
         {
@@ -24,21 +23,33 @@ public class SelectionManager : MonoBehaviour
         }
     }
 
+    private void Initialize()
+    {
+        if (!isInitialized)
+        {
+            if (selectionIndicatorPrefab == null)
+            {
+                Debug.LogError("Selection indicator prefab is not assigned!");
+                return;
+            }
+
+            isInitialized = true;
+        }
+    }
+
     public void ShowSelectionAt(Transform target)
     {
+        if (!isInitialized || target == null) return;
+
         if (currentIndicator == null)
         {
             currentIndicator = Instantiate(selectionIndicatorPrefab);
         }
 
-        // Position the indicator at the target's position
         currentIndicator.transform.position = target.position;
-        
-        // Parent to the target to follow it
         currentIndicator.transform.SetParent(target);
         currentIndicator.SetActive(true);
 
-        // If the target has a specific size, adjust the indicator
         Renderer targetRenderer = target.GetComponent<Renderer>();
         if (targetRenderer != null)
         {
@@ -46,7 +57,7 @@ public class SelectionManager : MonoBehaviour
             SelectionIndicator indicator = currentIndicator.GetComponent<SelectionIndicator>();
             if (indicator != null)
             {
-                indicator.UpdateSize(targetSize * 0.6f); // Make the circle slightly smaller than the ship
+                indicator.UpdateSize(targetSize * 0.6f);
             }
         }
     }
@@ -57,6 +68,14 @@ public class SelectionManager : MonoBehaviour
         {
             currentIndicator.SetActive(false);
             currentIndicator.transform.SetParent(null);
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (currentIndicator != null)
+        {
+            Destroy(currentIndicator);
         }
     }
 }
