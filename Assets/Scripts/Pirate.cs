@@ -6,6 +6,7 @@ public class Pirate : SeaEntityBase
     protected List<Ship> ownedShips;
     public float reputation = 50f;
     public float wealth = 1000f;
+    private bool isInitialized = false;
 
     protected virtual void Awake()
     {
@@ -14,12 +15,34 @@ public class Pirate : SeaEntityBase
     
     protected virtual void Start()
     {
-        RegisterWithFaction();
+        // Only register if not the player (player will be registered by ShipManager)
+        if (!(this is Player))
+        {
+            RegisterWithFaction();
+        }
     }
 
     protected virtual void OnDestroy()
     {
-        UnregisterFromFaction();
+        if (isInitialized)
+        {
+            UnregisterFromFaction();
+        }
+    }
+
+    public override void SetFaction(FactionType faction)
+    {
+        if (!isInitialized || faction != Faction)
+        {
+            if (isInitialized)
+            {
+                UnregisterFromFaction();
+            }
+            
+            base.SetFaction(faction);
+            RegisterWithFaction();
+            isInitialized = true;
+        }
     }
 
     private void RegisterWithFaction()
@@ -40,7 +63,7 @@ public class Pirate : SeaEntityBase
         if (FactionManager.Instance != null)
         {
             var factionData = FactionManager.Instance.GetFactionData(Faction);
-            if (factionData != null)
+            if (factionData != null && factionData.pirates.Contains(this))
             {
                 factionData.pirates.Remove(this);
                 Debug.Log($"Unregistered pirate from faction {Faction}");
@@ -106,13 +129,6 @@ public class Pirate : SeaEntityBase
             {
                 ship.SetFaction(Faction);
             }
-        }
-
-        // Re-register with new faction if FactionManager is available
-        if (FactionManager.Instance != null)
-        {
-            UnregisterFromFaction(); // Unregister from old faction
-            RegisterWithFaction();    // Register with new faction
         }
     }
 }
