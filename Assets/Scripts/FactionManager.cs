@@ -1,10 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-[System.Serializable]
-public class FactionData
+// Core faction type definition
+public class FactionDefinition
 {
-    public FactionType faction;
+    public FactionType type;
     public string name;
     public Color color = Color.white;
     public float reputation = 50f;
@@ -15,6 +15,16 @@ public class FactionData
     public int influence;          // Faction's influence in the Mediterranean
     public int resourceLevel;      // Economic resources available to the faction
     public Dictionary<FactionType, float> relations = new Dictionary<FactionType, float>();
+
+    public FactionDefinition(FactionType type, string name)
+    {
+        this.type = type;
+        this.name = name;
+        ships = new List<Ship>();
+        pirates = new List<Pirate>();
+        ports = new List<Port>();
+        relations = new Dictionary<FactionType, float>();
+    }
 
     public void SetRelation(FactionType otherFaction, float value)
     {
@@ -33,7 +43,7 @@ public class FactionData
 
 public class FactionManager : MonoBehaviour
 {
-    private Dictionary<FactionType, FactionData> factions = new Dictionary<FactionType, FactionData>();
+    private Dictionary<FactionType, FactionDefinition> factions = new Dictionary<FactionType, FactionDefinition>();
     private static FactionManager instance;
 
     public static FactionManager Instance
@@ -58,36 +68,40 @@ public class FactionManager : MonoBehaviour
     public void InitializeFactions()
     {
         // Initialize each faction with historical bases and characteristics
-        factions[FactionType.BarbaryPirates] = new FactionData { 
-            faction = FactionType.BarbaryPirates,
-            name = "Barbary Pirates",
+        factions[FactionType.BarbaryPirates] = new FactionDefinition(
+            FactionType.BarbaryPirates,
+            "Barbary Pirates"
+        ) { 
             baseLocation = "Algiers",
             influence = 80,
             resourceLevel = 70,
             color = new Color(0.8f, 0.2f, 0.2f) // Red
         };
 
-        factions[FactionType.MalteseCorsairs] = new FactionData {
-            faction = FactionType.MalteseCorsairs,
-            name = "Maltese Corsairs",
+        factions[FactionType.MalteseCorsairs] = new FactionDefinition(
+            FactionType.MalteseCorsairs,
+            "Maltese Corsairs"
+        ) {
             baseLocation = "Valletta",
             influence = 60,
             resourceLevel = 65,
             color = new Color(0.2f, 0.2f, 0.8f) // Blue
         };
 
-        factions[FactionType.UscocPirates] = new FactionData {
-            faction = FactionType.UscocPirates,
-            name = "Uscoc Pirates",
+        factions[FactionType.UscocPirates] = new FactionDefinition(
+            FactionType.UscocPirates,
+            "Uscoc Pirates"
+        ) {
             baseLocation = "Senj",
             influence = 40,
             resourceLevel = 30,
             color = new Color(0.2f, 0.8f, 0.2f) // Green
         };
 
-        factions[FactionType.LevanticPirates] = new FactionData {
-            faction = FactionType.LevanticPirates,
-            name = "Levantic Pirates",
+        factions[FactionType.LevanticPirates] = new FactionDefinition(
+            FactionType.LevanticPirates,
+            "Levantic Pirates"
+        ) {
             baseLocation = "Rhodes",
             influence = 50,
             resourceLevel = 45,
@@ -99,9 +113,10 @@ public class FactionManager : MonoBehaviour
         {
             if (!factions.ContainsKey(faction))
             {
-                factions[faction] = new FactionData { 
-                    faction = faction,
-                    name = faction.ToString(),
+                factions[faction] = new FactionDefinition(
+                    faction,
+                    faction.ToString()
+                ) { 
                     influence = 50,
                     resourceLevel = 50,
                     color = Color.gray
@@ -114,7 +129,7 @@ public class FactionManager : MonoBehaviour
         {
             foreach (FactionType otherFaction in System.Enum.GetValues(typeof(FactionType)))
             {
-                if (faction.faction != otherFaction)
+                if (faction.type != otherFaction)
                 {
                     faction.SetRelation(otherFaction, 50f); // Default neutral relations
                 }
@@ -124,7 +139,7 @@ public class FactionManager : MonoBehaviour
 
     public void RegisterShip(FactionType faction, Ship ship)
     {
-        if (factions.TryGetValue(faction, out FactionData factionData))
+        if (factions.TryGetValue(faction, out FactionDefinition factionData))
         {
             if (!factionData.ships.Contains(ship))
             {
@@ -140,7 +155,7 @@ public class FactionManager : MonoBehaviour
 
     public void UnregisterShip(FactionType faction, Ship ship)
     {
-        if (factions.TryGetValue(faction, out FactionData factionData))
+        if (factions.TryGetValue(faction, out FactionDefinition factionData))
         {
             if (factionData.ships.Contains(ship))
             {
@@ -156,7 +171,7 @@ public class FactionManager : MonoBehaviour
 
     public List<Ship> GetFactionShips(FactionType faction)
     {
-        if (factions.TryGetValue(faction, out FactionData factionData))
+        if (factions.TryGetValue(faction, out FactionDefinition factionData))
         {
             return new List<Ship>(factionData.ships); // Return a copy to prevent external modification
         }
@@ -169,16 +184,16 @@ public class FactionManager : MonoBehaviour
 
     public void UpdateFactionInfluence(FactionType faction, int change)
     {
-        if (factions.TryGetValue(faction, out FactionData factionData))
+        if (factions.TryGetValue(faction, out FactionDefinition factionData))
         {
             factionData.influence = Mathf.Clamp(factionData.influence + change, 0, 100);
             Debug.Log($"Updated {faction} influence to {factionData.influence}");
         }
     }
 
-    public FactionData GetFactionData(FactionType faction)
+    public FactionDefinition GetFactionData(FactionType faction)
     {
-        if (factions.TryGetValue(faction, out FactionData factionData))
+        if (factions.TryGetValue(faction, out FactionDefinition factionData))
         {
             return factionData;
         }
@@ -188,7 +203,7 @@ public class FactionManager : MonoBehaviour
 
     public int GetFactionInfluence(FactionType faction)
     {
-        if (factions.TryGetValue(faction, out FactionData factionData))
+        if (factions.TryGetValue(faction, out FactionDefinition factionData))
         {
             return factionData.influence;
         }
@@ -197,7 +212,7 @@ public class FactionManager : MonoBehaviour
 
     public int GetFactionResourceLevel(FactionType faction)
     {
-        if (factions.TryGetValue(faction, out FactionData factionData))
+        if (factions.TryGetValue(faction, out FactionDefinition factionData))
         {
             return factionData.resourceLevel;
         }
