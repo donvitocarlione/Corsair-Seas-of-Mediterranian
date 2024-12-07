@@ -1,14 +1,13 @@
 public enum FactionType
 {
-    Federation,
-    Klingons,
-    Romulans,
-    Ferengi,
-    Cardassians,
-    Dominion,
-    Vulcans,
-    Andorians,
-    BorgCollective,
-    TholianAssembly,
-    // Add other factions here
+    BarbaryPirates,        // North African corsairs
+    MalteseCorsairs,       // Knights of St. John privateers
+    UscocPirates,          // Adriatic Sea pirates
+    BarbarianCorsairs,     // Independent Barbary corsairs
+    LevanticPirates,       // Eastern Mediterranean pirates
+    GreekPirates,          // Aegean Sea pirates
+    CilicianPirates,       // Ancient Mediterranean pirates
+    ProvencalPirates,      // French Mediterranean pirates
+    AlgerianTaifa,         // Algerian privateers
+    RenegadoPirates        // European converts to Islam who became pirates
 }
