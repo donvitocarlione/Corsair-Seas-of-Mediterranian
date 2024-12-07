@@ -22,9 +22,7 @@ public class DiplomacySystem : MonoBehaviour
     }
 
     public FactionRelationship[] defaultRelationships;
-
     private Dictionary<(FactionType, FactionType), Relationship> relationships = new Dictionary<(FactionType, FactionType), Relationship>();
-    private Dictionary<(FactionType, FactionType), int> relationshipValues = new Dictionary<(FactionType, FactionType), int>();
 
     void Awake()
     {
@@ -44,8 +42,6 @@ public class DiplomacySystem : MonoBehaviour
         foreach (var rel in defaultRelationships)
         {
             SetRelationship(rel.factionA, rel.factionB, rel.initialRelationship);
-            // Initialize relationship values (-100 to 100)
-            SetRelationshipValue(rel.factionA, rel.factionB, (int)rel.initialRelationship * 50);
         }
     }
 
@@ -62,35 +58,6 @@ public class DiplomacySystem : MonoBehaviour
             return relationship;
         }
         return Relationship.Neutral;
-    }
-
-    public void SetRelationshipValue(FactionType factionA, FactionType factionB, int value)
-    {
-        value = Mathf.Clamp(value, -100, 100);
-        relationshipValues[(factionA, factionB)] = value;
-        relationshipValues[(factionB, factionA)] = value;
-
-        // Update relationship type based on value
-        Relationship newRelationship = value <= -33 ? Relationship.Hostile :
-                                     value >= 33 ? Relationship.Friendly :
-                                     Relationship.Neutral;
-
-        SetRelationship(factionA, factionB, newRelationship);
-    }
-
-    public int GetRelationshipValue(FactionType factionA, FactionType factionB)
-    {
-        if (relationshipValues.TryGetValue((factionA, factionB), out int value))
-        {
-            return value;
-        }
-        return 0;
-    }
-
-    public void ModifyRelationship(FactionType factionA, FactionType factionB, int change)
-    {
-        int currentValue = GetRelationshipValue(factionA, factionB);
-        SetRelationshipValue(factionA, factionB, currentValue + change);
     }
 
     public bool AreFriendly(FactionType factionA, FactionType factionB)
