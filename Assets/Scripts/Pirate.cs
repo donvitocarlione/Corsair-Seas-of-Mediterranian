@@ -3,9 +3,14 @@ using System.Collections.Generic;
 
 public class Pirate : SeaEntityBase
 {
-    protected List<Ship> ownedShips = new List<Ship>();
+    protected List<Ship> ownedShips;
     public float reputation = 50f;
     public float wealth = 1000f;
+
+    protected virtual void Awake()
+    {
+        ownedShips = new List<Ship>();
+    }
     
     protected virtual void Start()
     {
@@ -25,6 +30,7 @@ public class Pirate : SeaEntityBase
             if (factionData != null && !factionData.pirates.Contains(this))
             {
                 factionData.pirates.Add(this);
+                Debug.Log($"Registered pirate with faction {Faction}");
             }
         }
     }
@@ -37,39 +43,41 @@ public class Pirate : SeaEntityBase
             if (factionData != null)
             {
                 factionData.pirates.Remove(this);
+                Debug.Log($"Unregistered pirate from faction {Faction}");
             }
         }
     }
     
     public virtual void AddShip(Ship ship)
     {
-        if (!ownedShips.Contains(ship))
+        if (ship != null && !ownedShips.Contains(ship))
         {
             ownedShips.Add(ship);
             ship.SetOwner(this);
+            Debug.Log($"Added ship {ship.shipName} to pirate's fleet");
         }
     }
 
     public virtual void RemoveShip(Ship ship)
     {
-        if (ownedShips.Contains(ship))
+        if (ship != null && ownedShips.Contains(ship))
         {
             ownedShips.Remove(ship);
             if (ship.owner == this)
             {
                 ship.SetOwner(null);
             }
+            Debug.Log($"Removed ship {ship.shipName} from pirate's fleet");
         }
     }
 
     public virtual void SelectShip(Ship ship)
     {
-        // Base implementation - can be overridden by Player
-        if (ownedShips.Contains(ship))
+        if (ship != null && ownedShips.Contains(ship))
         {
             foreach (var ownedShip in ownedShips)
             {
-                if (ownedShip != ship && ownedShip.IsSelected)
+                if (ownedShip != null && ownedShip != ship && ownedShip.IsSelected)
                 {
                     ownedShip.Deselect();
                 }
@@ -86,20 +94,21 @@ public class Pirate : SeaEntityBase
     protected override void OnFactionChanged()
     {
         base.OnFactionChanged();
+        Debug.Log($"Pirate faction changed to {Faction}");
+
+        // Only proceed if we have ships to update
+        if (ownedShips == null) return;
         
         // Update faction for all owned ships
-        if (ownedShips != null)
+        foreach (var ship in ownedShips.ToArray()) // Use ToArray to avoid modification during enumeration
         {
-            foreach (var ship in ownedShips)
+            if (ship != null)
             {
-                if (ship != null)
-                {
-                    ship.SetFaction(Faction);
-                }
+                ship.SetFaction(Faction);
             }
         }
 
-        // Re-register with new faction
+        // Re-register with new faction if FactionManager is available
         if (FactionManager.Instance != null)
         {
             UnregisterFromFaction(); // Unregister from old faction
