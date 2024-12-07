@@ -9,18 +9,30 @@ public class Ship : SeaEntityBase
     public bool IsSelected => isSelected;
     public Pirate owner => ownerPirate;  // Property now returns the private field
 
+    public void Initialize(FactionType faction, string name)
+    {
+        SetFaction(faction);
+        shipName = name;
+    }
+
     public void Select()
     {
         isSelected = true;
         // Show selection indicator
-        SelectionManager.Instance.ShowSelectionAt(transform);
+        if (SelectionManager.Instance != null)
+        {
+            SelectionManager.Instance.ShowSelectionAt(transform);
+        }
     }
 
     public void Deselect()
     {
         isSelected = false;
         // Hide selection indicator
-        SelectionManager.Instance.HideSelection();
+        if (SelectionManager.Instance != null)
+        {
+            SelectionManager.Instance.HideSelection();
+        }
     }
 
     public void SetOwner(Pirate newOwner)
