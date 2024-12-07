@@ -52,6 +52,7 @@ public class ShipManager : MonoBehaviour
             if (playerFactionData != null)
             {
                 PlayerFaction = playerFactionData.faction;
+                Debug.Log($"Player faction set to: {PlayerFaction}");
             }
             else
             {
@@ -175,7 +176,8 @@ public class ShipManager : MonoBehaviour
         
         if (ship != null)
         {
-            ship.Initialize(faction, $"{faction} Ship {activeShips[faction].Count + 1}");
+            string shipName = $"{faction} Ship {activeShips[faction].Count + 1}";
+            ship.Initialize(faction, shipName);
             
             // Add appropriate control components based on faction
             if (data.isPlayerFaction)
