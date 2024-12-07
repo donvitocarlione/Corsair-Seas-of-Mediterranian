@@ -28,6 +28,7 @@ public class ShipManager : MonoBehaviour
 
     private Dictionary<FactionType, List<Ship>> activeShips = new Dictionary<FactionType, List<Ship>>();
     private List<Vector3> occupiedPositions = new List<Vector3>();
+    private Transform shipsParent;
 
     void Awake()
     {
@@ -35,8 +36,12 @@ public class ShipManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject);
+            // Don't use DontDestroyOnLoad for now
             Debug.Log("ShipManager instance created");
+            
+            // Create a parent object for all ships
+            shipsParent = new GameObject("SpawnedShips").transform;
+            shipsParent.parent = transform; // Parent it to ShipManager
         }
         else
         {
@@ -87,7 +92,7 @@ public class ShipManager : MonoBehaviour
                 Ship newShip = SpawnShipForFaction(data.faction);
                 if (newShip != null)
                 {
-                    Debug.Log($"Successfully spawned ship {i + 1} for {data.faction}");
+                    Debug.Log($"Successfully spawned ship {i + 1} for {data.faction} at {newShip.transform.position}");
                 }
                 else
                 {
@@ -113,22 +118,53 @@ public class ShipManager : MonoBehaviour
             return null;
         }
 
+        // Get random prefab
         GameObject shipPrefab = data.shipPrefabs[Random.Range(0, data.shipPrefabs.Count)];
+        if (shipPrefab == null)
+        {
+            Debug.LogError($"Ship prefab is null for faction {faction}");
+            return null;
+        }
+
+        // Get spawn position
         Vector3 spawnPos = GetSafeSpawnPosition(data.spawnArea, data.spawnRadius);
         
         Debug.Log($"Spawning ship for {faction} at position {spawnPos}");
-        GameObject shipObj = Instantiate(shipPrefab, spawnPos, Quaternion.identity);
+        GameObject shipObj = Instantiate(shipPrefab, spawnPos, Quaternion.identity, shipsParent);
+        
+        // Add required components if they don't exist
+        if (shipObj.GetComponent<MeshRenderer>() == null)
+        {
+            Debug.LogWarning($"Adding MeshRenderer to ship {shipObj.name}");
+            shipObj.AddComponent<MeshRenderer>();
+        }
+
+        if (shipObj.GetComponent<Collider>() == null)
+        {
+            Debug.LogWarning($"Adding BoxCollider to ship {shipObj.name}");
+            shipObj.AddComponent<BoxCollider>();
+        }
+
         Ship ship = shipObj.GetComponent<Ship>();
+        if (ship == null)
+        {
+            Debug.LogWarning($"Adding Ship component to {shipObj.name}");
+            ship = shipObj.AddComponent<Ship>();
+        }
         
         if (ship != null)
         {
             ship.Initialize(faction, $"{faction} Ship {activeShips[faction].Count + 1}");
             RegisterShip(faction, ship);
             occupiedPositions.Add(spawnPos);
+
+            // Ensure the ship is visible and active
+            shipObj.SetActive(true);
+            
             return ship;
         }
         
-        Debug.LogError($"Ship component not found on prefab for faction {faction}");
+        Debug.LogError($"Failed to setup ship for faction {faction}");
         Destroy(shipObj);
         return null;
     }
