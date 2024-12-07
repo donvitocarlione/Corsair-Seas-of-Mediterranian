@@ -3,14 +3,25 @@ using UnityEngine;
 
 public class Player : Pirate
 {
+    [Header("Player Stats")]
     public int level = 1;
     public float experience = 0f;
-    public Dictionary<string, int> skills = new Dictionary<string, int>();
+    public Dictionary<string, float> skills = new Dictionary<string, float>();
     public List<Quest> questLog = new List<Quest>();
 
     private void Start()
     {
         // Initialize player-specific components
+        InitializeSkills();
+    }
+
+    private void InitializeSkills()
+    {
+        // Initialize basic skills
+        skills["Navigation"] = 1f;
+        skills["Combat"] = 1f;
+        skills["Trading"] = 1f;
+        skills["Leadership"] = 1f;
     }
 
     public override void AddShip(Ship ship)
@@ -51,9 +62,12 @@ public class Player : Pirate
 
     private void GainSkillPoints()
     {
-        int currentPoints = 0;
-        skills.TryGetValue("points", out currentPoints);
-        skills["points"] = currentPoints + 1;
+        // Add skill points that can be distributed
+        if (!skills.ContainsKey("AvailablePoints"))
+        {
+            skills["AvailablePoints"] = 0;
+        }
+        skills["AvailablePoints"] += 1;
     }
 
     public void AddQuest(Quest quest)
@@ -64,9 +78,24 @@ public class Player : Pirate
         }
     }
 
+    // Improve a specific skill using available points
+    public bool ImproveSkill(string skillName)
+    {
+        if (skills.ContainsKey("AvailablePoints") && skills["AvailablePoints"] > 0)
+        {
+            if (skills.ContainsKey(skillName))
+            {
+                skills[skillName] += 1f;
+                skills["AvailablePoints"] -= 1;
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void OnMouseDown()
     {
         // Handle player selection
-        // You might want to implement additional player-specific selection behavior
+        Debug.Log("Player selected");
     }
 }
