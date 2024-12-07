@@ -2,13 +2,14 @@ using UnityEngine;
 
 public class InputManager : MonoBehaviour
 {
-    private ShipSelector currentlySelectedShip;
+    private Ship currentlySelectedShip;
     private ShipManager shipManager;
     private Camera mainCamera;
 
     [Header("Selection Settings")]
     public LayerMask selectionMask = -1; // Default to everything
     public float maxSelectionDistance = 1000f;
+    public FactionType playerFaction = FactionType.Player; // Set this in inspector or via code
 
     void Start()
     {
@@ -53,10 +54,11 @@ public class InputManager : MonoBehaviour
         {
             Debug.Log($"Hit object: {hit.collider.gameObject.name}");
 
-            ShipSelector newSelection = hit.collider.GetComponent<ShipSelector>();
+            Ship newSelection = hit.collider.GetComponent<Ship>();
             if (newSelection != null)
             {
-                if (newSelection.IsSelectable())
+                // Check if the ship belongs to the player faction
+                if (newSelection.faction == playerFaction)
                 {
                     // Deselect previous ship
                     if (currentlySelectedShip != null)
@@ -71,7 +73,7 @@ public class InputManager : MonoBehaviour
                 }
                 else
                 {
-                    Debug.Log($"Ship {hit.collider.gameObject.name} is not selectable");
+                    Debug.Log($"Ship {hit.collider.gameObject.name} belongs to {newSelection.faction} faction");
                 }
             }
             else
