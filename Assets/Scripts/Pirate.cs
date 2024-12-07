@@ -9,16 +9,21 @@ public class Pirate : SeaEntityBase
     
     protected virtual void Start()
     {
-        // Register with FactionManager
-        FactionManager.Instance.RegisterPirate(this);
+        // Register with FactionManager's faction data
+        var factionData = FactionManager.Instance.GetFactionData(Faction);
+        if (factionData != null && !factionData.pirates.Contains(this))
+        {
+            factionData.pirates.Add(this);
+        }
     }
 
     protected virtual void OnDestroy()
     {
-        // Unregister from FactionManager
-        if (FactionManager.Instance != null)
+        // Unregister from FactionManager's faction data
+        var factionData = FactionManager.Instance.GetFactionData(Faction);
+        if (factionData != null)
         {
-            FactionManager.Instance.UnregisterPirate(this);
+            factionData.pirates.Remove(this);
         }
     }
     
