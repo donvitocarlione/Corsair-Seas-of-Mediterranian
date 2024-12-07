@@ -9,24 +9,35 @@ public class Pirate : SeaEntityBase
     
     protected virtual void Start()
     {
-        // Register with FactionManager's faction data
-        var factionData = FactionManager.Instance.GetFactionData(Faction);
-        if (factionData != null)
+        RegisterWithFaction();
+    }
+
+    protected virtual void OnDestroy()
+    {
+        UnregisterFromFaction();
+    }
+
+    private void RegisterWithFaction()
+    {
+        if (FactionManager.Instance != null)
         {
-            if (!factionData.pirates.Contains(this))
+            var factionData = FactionManager.Instance.GetFactionData(Faction);
+            if (factionData != null && !factionData.pirates.Contains(this))
             {
                 factionData.pirates.Add(this);
             }
         }
     }
 
-    protected virtual void OnDestroy()
+    private void UnregisterFromFaction()
     {
-        // Unregister from FactionManager's faction data
-        var factionData = FactionManager.Instance.GetFactionData(Faction);
-        if (factionData != null)
+        if (FactionManager.Instance != null)
         {
-            factionData.pirates.Remove(this);
+            var factionData = FactionManager.Instance.GetFactionData(Faction);
+            if (factionData != null)
+            {
+                factionData.pirates.Remove(this);
+            }
         }
     }
     
@@ -75,17 +86,24 @@ public class Pirate : SeaEntityBase
     protected override void OnFactionChanged()
     {
         base.OnFactionChanged();
+        
         // Update faction for all owned ships
-        foreach (var ship in ownedShips)
+        if (ownedShips != null)
         {
-            ship.SetFaction(Faction);
+            foreach (var ship in ownedShips)
+            {
+                if (ship != null)
+                {
+                    ship.SetFaction(Faction);
+                }
+            }
         }
 
         // Re-register with new faction
-        var factionData = FactionManager.Instance.GetFactionData(Faction);
-        if (factionData != null && !factionData.pirates.Contains(this))
+        if (FactionManager.Instance != null)
         {
-            factionData.pirates.Add(this);
+            UnregisterFromFaction(); // Unregister from old faction
+            RegisterWithFaction();    // Register with new faction
         }
     }
 }
