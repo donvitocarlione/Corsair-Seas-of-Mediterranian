@@ -14,7 +14,7 @@ public class FactionData
 
 public class FactionManager : MonoBehaviour
 {
-    public Dictionary<FactionType, FactionData> factions = new Dictionary<FactionType, FactionData>();
+    private Dictionary<FactionType, FactionData> factions = new Dictionary<FactionType, FactionData>();
     private static FactionManager instance;
 
     public static FactionManager Instance
@@ -85,11 +85,31 @@ public class FactionManager : MonoBehaviour
     {
         if (factions.TryGetValue(faction, out FactionData factionData))
         {
-            factionData.ships.Add(ship);
+            if (!factionData.ships.Contains(ship))
+            {
+                factionData.ships.Add(ship);
+                Debug.Log($"Registered ship {ship.shipName} to faction {faction}");
+            }
         }
         else
         {
-            Debug.LogError("Attempting to register ship for unknown faction: " + faction);
+            Debug.LogError($"Attempting to register ship for unknown faction: {faction}");
+        }
+    }
+
+    public void UnregisterShip(FactionType faction, Ship ship)
+    {
+        if (factions.TryGetValue(faction, out FactionData factionData))
+        {
+            if (factionData.ships.Contains(ship))
+            {
+                factionData.ships.Remove(ship);
+                Debug.Log($"Unregistered ship {ship.shipName} from faction {faction}");
+            }
+        }
+        else
+        {
+            Debug.LogError($"Attempting to unregister ship from unknown faction: {faction}");
         }
     }
 
@@ -97,11 +117,11 @@ public class FactionManager : MonoBehaviour
     {
         if (factions.TryGetValue(faction, out FactionData factionData))
         {
-            return factionData.ships;
+            return new List<Ship>(factionData.ships); // Return a copy to prevent external modification
         }
         else
         {
-            Debug.LogError("Attempting to get ships for unknown faction: " + faction);
+            Debug.LogError($"Attempting to get ships for unknown faction: {faction}");
             return new List<Ship>();
         }
     }
@@ -111,6 +131,7 @@ public class FactionManager : MonoBehaviour
         if (factions.TryGetValue(faction, out FactionData factionData))
         {
             factionData.influence = Mathf.Clamp(factionData.influence + change, 0, 100);
+            Debug.Log($"Updated {faction} influence to {factionData.influence}");
         }
     }
 
@@ -120,6 +141,25 @@ public class FactionManager : MonoBehaviour
         {
             return factionData;
         }
+        Debug.LogError($"Attempting to get data for unknown faction: {faction}");
         return null;
+    }
+
+    public int GetFactionInfluence(FactionType faction)
+    {
+        if (factions.TryGetValue(faction, out FactionData factionData))
+        {
+            return factionData.influence;
+        }
+        return 0;
+    }
+
+    public int GetFactionResourceLevel(FactionType faction)
+    {
+        if (factions.TryGetValue(faction, out FactionData factionData))
+        {
+            return factionData.resourceLevel;
+        }
+        return 0;
     }
 }
