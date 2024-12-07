@@ -23,7 +23,6 @@ public class ShipManager : MonoBehaviour
 
     [Header("Faction Ship Settings")]
     public List<FactionShipData> factionShipData;
-    public GameObject playerShipPrefab;
 
     [Header("Spawn Settings")]
     public float minSpawnDistance = 50f;
@@ -36,6 +35,7 @@ public class ShipManager : MonoBehaviour
     private Transform piratesParent;
 
     public FactionType PlayerFaction { get; private set; }
+    private Player playerInstance;
 
     void Awake()
     {
@@ -43,12 +43,13 @@ public class ShipManager : MonoBehaviour
         {
             Instance = this;
             
-            shipsParent = new GameObject("SpawnedShips").transform;
+            shipsParent = new GameObject("Ships").transform;
             shipsParent.parent = transform;
             
-            piratesParent = new GameObject("SpawnedPirates").transform;
+            piratesParent = new GameObject("Pirates").transform;
             piratesParent.parent = transform;
 
+            // Find player faction
             var playerFactionData = factionShipData.Find(data => data.isPlayerFaction);
             if (playerFactionData != null)
             {
@@ -56,7 +57,14 @@ public class ShipManager : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("No player faction marked in ShipManager!");
+                Debug.LogError("No player faction marked in ShipManager! Check your FactionShipData settings.");
+            }
+
+            // Find player instance
+            playerInstance = FindObjectOfType<Player>();
+            if (playerInstance == null)
+            {
+                Debug.LogError("No Player component found in the scene! Add the Player component to your player object.");
             }
         }
         else
@@ -83,16 +91,32 @@ public class ShipManager : MonoBehaviour
                 activePirates[data.faction] = new List<Pirate>();
             }
 
+            // Spawn pirates first
             List<Pirate> factionPirates = new List<Pirate>();
-            for (int i = 0; i < data.initialPirateCount; i++)
+            
+            if (data.isPlayerFaction)
             {
-                Pirate newPirate = SpawnPirate(data.faction);
-                if (newPirate != null)
+                // For player faction, use the existing Player component
+                if (playerInstance != null)
                 {
-                    factionPirates.Add(newPirate);
+                    factionPirates.Add(playerInstance);
+                    activePirates[data.faction].Add(playerInstance);
+                }
+            }
+            else
+            {
+                // For AI factions, spawn new pirates
+                for (int i = 0; i < data.initialPirateCount; i++)
+                {
+                    Pirate newPirate = SpawnPirate(data.faction);
+                    if (newPirate != null)
+                    {
+                        factionPirates.Add(newPirate);
+                    }
                 }
             }
 
+            // Spawn ships
             List<Ship> ships = new List<Ship>();
             for (int i = 0; i < data.initialShipCount; i++)
             {
@@ -103,7 +127,11 @@ public class ShipManager : MonoBehaviour
                 }
             }
 
-            AssignShipsToPirates(ships, factionPirates);
+            // Assign ships to pirates
+            if (ships.Count > 0 && factionPirates.Count > 0)
+            {
+                AssignShipsToPirates(ships, factionPirates);
+            }
         }
     }
 
@@ -119,7 +147,9 @@ public class ShipManager : MonoBehaviour
         Pirate pirate = pirateObj.GetComponent<Pirate>();
         if (pirate == null)
         {
-            pirate = pirateObj.AddComponent<Pirate>();
+            Debug.LogError("Pirate prefab must have a Pirate component!");
+            Destroy(pirateObj);
+            return null;
         }
 
         pirateObj.name = $"Pirate_{faction}_{activePirates[faction].Count + 1}";
@@ -153,6 +183,7 @@ public class ShipManager : MonoBehaviour
         FactionShipData data = GetFactionShipData(faction);
         if (data == null || data.shipPrefabs == null || data.shipPrefabs.Count == 0)
         {
+            Debug.LogError($"No ship prefabs found for faction {faction}!");
             return null;
         }
 
@@ -167,6 +198,7 @@ public class ShipManager : MonoBehaviour
             string shipName = $"{faction} Ship {activeShips[faction].Count + 1}";
             ship.Initialize(faction, shipName);
             
+            // Add AI controller only for non-player ships
             if (!data.isPlayerFaction)
             {
                 AIShipController aiController = shipObj.AddComponent<AIShipController>();
@@ -178,6 +210,7 @@ public class ShipManager : MonoBehaviour
             return ship;
         }
         
+        Debug.LogError($"Ship prefab {shipPrefab.name} doesn't have a Ship component!");
         Destroy(shipObj);
         return null;
     }
