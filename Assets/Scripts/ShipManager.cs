@@ -73,7 +73,15 @@ public class ShipManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            Initialize();
+            CreateContainers();
+            if (ValidateConfiguration())
+            {
+                isInitialized = true;
+            }
+            else
+            {
+                Debug.LogError("ShipManager initialization failed due to invalid configuration");
+            }
         }
         else
         {
@@ -81,20 +89,11 @@ public class ShipManager : MonoBehaviour
         }
     }
 
-    private void Initialize()
+    void Start()
     {
-        if (!isInitialized)
+        if (Instance == this && isInitialized)
         {
-            CreateContainers();
-            if (ValidateConfiguration())
-            {
-                SetupPlayerFaction();
-                isInitialized = true;
-            }
-            else
-            {
-                Debug.LogError("ShipManager initialization failed due to invalid configuration");
-            }
+            SetupPlayerFaction();
         }
     }
 
@@ -159,14 +158,8 @@ public class ShipManager : MonoBehaviour
         }
     }
 
-    public void InitializeShipsAndPirates()
+    private void InitializeShipsAndPirates()
     {
-        if (!isInitialized)
-        {
-            Debug.LogError("Cannot initialize ships and pirates before ShipManager is initialized");
-            return;
-        }
-
         foreach (var data in factionShipData)
         {
             if (!data.Validate()) continue;
