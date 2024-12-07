@@ -2,12 +2,21 @@ using UnityEngine;
 
 public class Buoyancy : MonoBehaviour
 {
-    public float waterDensity = 1000f; // Density of water (kg/m^3)
-    public float waterLevelY = 0f; // Y-coordinate of the water surface
-    public float boatSubmergedPercentage = 0f; // Percentage submerged (0.0 - 1.0)
-    public bool isInWater; // Made public as per user request
+    [Header("Buoyancy Settings")]
+    public float waterDensity = 1000f;
+    public float waterLevelY = 0f;
+    public float buoyancyForce = 15f; // Added multiplier for easy tuning
+    public float waterDrag = 2f;
+    public float waterAngularDrag = 2f;
+
+    [Header("Debug Info")]
+    public float boatSubmergedPercentage = 0f;
+    public bool isInWater;
+
     private Rigidbody rb;
     private Collider boatCollider;
+    private float initialDrag;
+    private float initialAngularDrag;
 
     void Start()
     {
@@ -17,44 +26,79 @@ public class Buoyancy : MonoBehaviour
         if (rb == null)
         {
             Debug.LogError("Ship needs a Rigidbody!");
+            enabled = false;
+            return;
         }
 
         if (boatCollider == null)
         {
             Debug.LogError("Ship needs a collider!");
+            enabled = false;
+            return;
         }
+
+        // Store initial values
+        initialDrag = rb.drag;
+        initialAngularDrag = rb.angularDrag;
+
+        // Set recommended Rigidbody settings
+        rb.mass = 1000f; // 1 ton
+        rb.useGravity = true;
+        rb.constraints = RigidbodyConstraints.FreezeRotationZ | RigidbodyConstraints.FreezeRotationX;
     }
 
     void FixedUpdate()
     {
-        // Calculate submerged volume (APPROXIMATION)
-        float submergedVolume = CalculateSubmergedVolume();
+        // Calculate submerged percentage
+        boatSubmergedPercentage = CalculateSubmergedPercentage();
+        isInWater = boatSubmergedPercentage > 0;
 
-        // Calculate buoyant force
-        float buoyantForceMagnitude = submergedVolume * waterDensity * Physics.gravity.magnitude;
-        Vector3 buoyantForce = Vector3.up * buoyantForceMagnitude;
+        if (isInWater)
+        {
+            // Apply buoyancy force
+            float forceMagnitude = buoyancyForce * boatSubmergedPercentage * waterDensity * -Physics.gravity.y;
+            Vector3 buoyantForce = Vector3.up * forceMagnitude;
 
-        // Apply force at the center of buoyancy (approximation)
-        Vector3 centerOfBuoyancy = boatCollider.bounds.center;
-        rb.AddForceAtPosition(buoyantForce, centerOfBuoyancy, ForceMode.Force);
+            // Apply force at the center of buoyancy (slightly below center for stability)
+            Vector3 centerOfBuoyancy = boatCollider.bounds.center;
+            centerOfBuoyancy.y = Mathf.Lerp(boatCollider.bounds.min.y, boatCollider.bounds.center.y, 0.5f);
+            rb.AddForceAtPosition(buoyantForce, centerOfBuoyancy, ForceMode.Force);
 
-        // Wave motion (optional, add this back if desired, but base it on the buoyantForce)
-        // Example: Apply a sinusoidal wave force to simulate wave motion
-        // float waveForce = Mathf.Sin(Time.time) * waveAmplitude;
-        // rb.AddForceAtPosition(Vector3.up * waveForce, centerOfBuoyancy, ForceMode.Force);
+            // Apply water resistance
+            rb.drag = waterDrag;
+            rb.angularDrag = waterAngularDrag;
+        }
+        else
+        {
+            // Reset drag when out of water
+            rb.drag = initialDrag;
+            rb.angularDrag = initialAngularDrag;
+        }
     }
 
-    float CalculateSubmergedVolume()
+    float CalculateSubmergedPercentage()
     {
-        // Simplified Submerged Volume Calculation (Approximation):
-        float volume = boatCollider.bounds.size.x * boatCollider.bounds.size.y * boatCollider.bounds.size.z;
-        float submergedHeight = Mathf.Max(0, waterLevelY - boatCollider.bounds.min.y);
-        boatSubmergedPercentage = Mathf.Clamp01(submergedHeight / boatCollider.bounds.size.y); // Percentage to 0-1
-        return volume * boatSubmergedPercentage;
+        float shipBottom = boatCollider.bounds.min.y;
+        float shipHeight = boatCollider.bounds.size.y;
+        float submergedHeight = Mathf.Max(0, waterLevelY - shipBottom);
+        return Mathf.Clamp01(submergedHeight / shipHeight);
     }
 
-    public void SetWaterObject(float waterLevelY)
+    public void SetWaterLevel(float newWaterLevelY)
     {
-        this.waterLevelY = waterLevelY;
+        waterLevelY = newWaterLevelY;
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        // Draw water level
+        if (boatCollider != null)
+        {
+            Gizmos.color = Color.blue;
+            Vector3 center = boatCollider.bounds.center;
+            Vector3 size = boatCollider.bounds.size;
+            Vector3 waterLineCenter = new Vector3(center.x, waterLevelY, center.z);
+            Gizmos.DrawWireCube(waterLineCenter, new Vector3(size.x, 0.1f, size.z));
+        }
     }
 }
