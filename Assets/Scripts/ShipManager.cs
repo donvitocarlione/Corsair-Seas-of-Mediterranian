@@ -19,7 +19,6 @@ public class ShipManager : MonoBehaviour
 
     [Header("References")]
     public FactionManager factionManager;
-    public DiplomacySystem diplomacySystem;
     public GameObject piratePrefab;       // Prefab for creating pirates
 
     [Header("Faction Ship Settings")]
@@ -129,11 +128,7 @@ public class ShipManager : MonoBehaviour
             pirate = pirateObj.AddComponent<Pirate>();
         }
 
-        // Add controller component
-        PirateController controller = pirateObj.AddComponent<PirateController>();
-        controller.Initialize(pirate);
-
-        // Register pirate
+        pirateObj.name = $"Pirate_{faction}_{activePirates[faction].Count + 1}";
         activePirates[faction].Add(pirate);
         
         return pirate;
@@ -214,14 +209,11 @@ public class ShipManager : MonoBehaviour
             string shipName = $"{faction} Ship {activeShips[faction].Count + 1}";
             ship.Initialize(faction, shipName);
             
-            if (data.isPlayerFaction)
-            {
-                shipObj.AddComponent<ShipSelector>();
-            }
-            else
+            // Add AI controller for non-player ships
+            if (!data.isPlayerFaction)
             {
                 AIShipController aiController = shipObj.AddComponent<AIShipController>();
-                aiController.Initialize(ship, diplomacySystem);
+                aiController.Initialize(ship);
             }
 
             RegisterShip(faction, ship);
@@ -289,6 +281,7 @@ public class ShipManager : MonoBehaviour
         {
             activeShips[faction].Remove(ship);
             occupiedPositions.Remove(ship.transform.position);
+            factionManager.UnregisterShip(faction, ship);
         }
     }
 
