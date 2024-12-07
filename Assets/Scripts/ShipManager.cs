@@ -5,12 +5,12 @@ using System.Collections.Generic;
 public class FactionShipData
 {
     public FactionType faction;
-    public List<GameObject> shipPrefabs;  // Different ship types for this faction
-    public Vector3 spawnArea;             // Center point of spawn area for this faction
-    public float spawnRadius = 100f;      // Radius around spawn point where ships can appear
-    public int initialShipCount = 3;      // How many ships this faction starts with
-    public bool isPlayerFaction = false;  // Whether this faction is controlled by the player
-    public int initialPirateCount = 2;    // How many pirates this faction starts with
+    public List<GameObject> shipPrefabs;
+    public Vector3 spawnArea;
+    public float spawnRadius = 100f;
+    public int initialShipCount = 3;
+    public bool isPlayerFaction = false;
+    public int initialPirateCount = 2;
 }
 
 public class ShipManager : MonoBehaviour
@@ -19,15 +19,15 @@ public class ShipManager : MonoBehaviour
 
     [Header("References")]
     public FactionManager factionManager;
-    public GameObject piratePrefab;       // Prefab for creating pirates
+    public GameObject piratePrefab;
 
     [Header("Faction Ship Settings")]
     public List<FactionShipData> factionShipData;
-    public GameObject playerShipPrefab;   // Default player ship
+    public GameObject playerShipPrefab;
 
     [Header("Spawn Settings")]
-    public float minSpawnDistance = 50f;  // Minimum distance between spawned ships
-    public float safeSpawnAttempts = 10;  // How many times to try finding a safe spawn point
+    public float minSpawnDistance = 50f;
+    public float safeSpawnAttempts = 10;
 
     private Dictionary<FactionType, List<Ship>> activeShips = new Dictionary<FactionType, List<Ship>>();
     private Dictionary<FactionType, List<Pirate>> activePirates = new Dictionary<FactionType, List<Pirate>>();
@@ -43,14 +43,12 @@ public class ShipManager : MonoBehaviour
         {
             Instance = this;
             
-            // Create parent objects
             shipsParent = new GameObject("SpawnedShips").transform;
             shipsParent.parent = transform;
             
             piratesParent = new GameObject("SpawnedPirates").transform;
             piratesParent.parent = transform;
 
-            // Find player faction
             var playerFactionData = factionShipData.Find(data => data.isPlayerFaction);
             if (playerFactionData != null)
             {
@@ -76,7 +74,6 @@ public class ShipManager : MonoBehaviour
     {
         foreach (var data in factionShipData)
         {
-            // Initialize dictionaries for this faction
             if (!activeShips.ContainsKey(data.faction))
             {
                 activeShips[data.faction] = new List<Ship>();
@@ -86,7 +83,6 @@ public class ShipManager : MonoBehaviour
                 activePirates[data.faction] = new List<Pirate>();
             }
 
-            // Spawn pirates first
             List<Pirate> factionPirates = new List<Pirate>();
             for (int i = 0; i < data.initialPirateCount; i++)
             {
@@ -97,19 +93,17 @@ public class ShipManager : MonoBehaviour
                 }
             }
 
-            // Spawn ships and assign them to pirates
-            List<Ship> unassignedShips = new List<Ship>();
+            List<Ship> ships = new List<Ship>();
             for (int i = 0; i < data.initialShipCount; i++)
             {
                 Ship newShip = SpawnShipForFaction(data.faction);
                 if (newShip != null)
                 {
-                    unassignedShips.Add(newShip);
+                    ships.Add(newShip);
                 }
             }
 
-            // Assign ships to pirates based on compatibility
-            AssignShipsToPirates(unassignedShips, factionPirates);
+            AssignShipsToPirates(ships, factionPirates);
         }
     }
 
@@ -136,57 +130,21 @@ public class ShipManager : MonoBehaviour
 
     private void AssignShipsToPirates(List<Ship> ships, List<Pirate> pirates)
     {
-        // Create a copy of the lists to work with
-        List<Ship> unassignedShips = new List<Ship>(ships);
-        List<Pirate> availablePirates = new List<Pirate>(pirates);
-
-        while (unassignedShips.Count > 0 && availablePirates.Count > 0)
+        int pirateIndex = 0;
+        foreach (Ship ship in ships)
         {
-            float bestCompatibility = -1f;
-            Ship bestShip = null;
-            Pirate bestPirate = null;
-
-            // Find the best ship-pirate match
-            foreach (Ship ship in unassignedShips)
+            if (pirates.Count > 0)
             {
-                foreach (Pirate pirate in availablePirates)
-                {
-                    if (pirate.ships.Count >= pirate.maxShipCount)
-                        continue;
-
-                    float compatibility = pirate.GetShipCompatibility(ship);
-                    if (compatibility > bestCompatibility)
-                    {
-                        bestCompatibility = compatibility;
-                        bestShip = ship;
-                        bestPirate = pirate;
-                    }
-                }
-            }
-
-            if (bestShip != null && bestPirate != null)
-            {
-                // Assign the ship to the pirate
-                bestPirate.AddShip(bestShip);
-                unassignedShips.Remove(bestShip);
-
-                // Remove pirate if they've reached their ship limit
-                if (bestPirate.ships.Count >= bestPirate.maxShipCount)
-                {
-                    availablePirates.Remove(bestPirate);
-                }
+                Pirate pirate = pirates[pirateIndex];
+                pirate.AddShip(ship);
+                
+                // Move to next pirate in round-robin fashion
+                pirateIndex = (pirateIndex + 1) % pirates.Count;
             }
             else
             {
-                // No more valid assignments possible
-                break;
+                Debug.LogWarning($"Ship {ship.shipName} remained unassigned - no pirates available");
             }
-        }
-
-        // Handle any remaining unassigned ships
-        foreach (Ship ship in unassignedShips)
-        {
-            Debug.LogWarning($"Ship {ship.shipName} remained unassigned");
         }
     }
 
@@ -209,7 +167,6 @@ public class ShipManager : MonoBehaviour
             string shipName = $"{faction} Ship {activeShips[faction].Count + 1}";
             ship.Initialize(faction, shipName);
             
-            // Add AI controller for non-player ships
             if (!data.isPlayerFaction)
             {
                 AIShipController aiController = shipObj.AddComponent<AIShipController>();
@@ -236,7 +193,7 @@ public class ShipManager : MonoBehaviour
         for (int i = 0; i < safeSpawnAttempts; i++)
         {
             Vector3 randomPos = centerPoint + Random.insideUnitSphere * radius;
-            randomPos.y = 0; // Keep ships at water level
+            randomPos.y = 0;
 
             bool positionIsSafe = true;
             foreach (Vector3 occupied in occupiedPositions)
@@ -254,7 +211,6 @@ public class ShipManager : MonoBehaviour
             }
         }
 
-        // Fallback position
         Vector3 fallbackPos = centerPoint + Random.insideUnitSphere * radius;
         fallbackPos.y = 0;
         return fallbackPos;
