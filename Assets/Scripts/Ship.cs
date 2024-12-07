@@ -4,9 +4,10 @@ public class Ship : SeaEntityBase
 {
     public string shipName;
     private bool isSelected;
-    private Pirate owner;
+    private Pirate ownerPirate;  // Renamed the field to avoid naming conflict
 
     public bool IsSelected => isSelected;
+    public Pirate owner => ownerPirate;  // Property now returns the private field
 
     public void Select()
     {
@@ -24,19 +25,16 @@ public class Ship : SeaEntityBase
 
     public void SetOwner(Pirate newOwner)
     {
-        if (owner != null)
+        if (ownerPirate != null)
         {
-            owner.RemoveShip(this);
+            ownerPirate.RemoveShip(this);
         }
 
-        owner = newOwner;
+        ownerPirate = newOwner;
 
-        if (owner != null)
+        if (ownerPirate != null)
         {
-            SetFaction(owner.Faction);
+            SetFaction(ownerPirate.Faction);
         }
     }
-
-    // Properties
-    public Pirate owner => owner;
 }
