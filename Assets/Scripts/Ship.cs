@@ -26,8 +26,8 @@ public class Ship : MonoBehaviour
         // Configure Rigidbody
         rb.useGravity = false; // Since we're using buoyancy
         rb.mass = 1000f;       // Ships are heavy
-        rb.drag = 1f;          // Water resistance
-        rb.angularDrag = 1f;   // Rotational resistance
+        rb.linearDamping = 1f;          // Water resistance
+        rb.angularDamping = 1f;   // Rotational resistance
 
         // Get ship selector if exists
         shipSelector = GetComponent<ShipSelector>();
