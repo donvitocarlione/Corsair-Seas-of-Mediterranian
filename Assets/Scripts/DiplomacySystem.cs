@@ -19,31 +19,25 @@ public class DiplomacySystem : MonoBehaviour
 
     private void InitializeRelationships()
     {
-        // Major Political Alignments
-        SetRelationship(FactionType.Federation, FactionType.Vulcans, Relationship.Friendly);
-        SetRelationship(FactionType.Federation, FactionType.Andorians, Relationship.Friendly);
+        // Historical Alliances
+        SetRelationship(FactionType.BarbaryPirates, FactionType.AlgerianTaifa, Relationship.Friendly);
+        SetRelationship(FactionType.BarbaryPirates, FactionType.RenegadoPirates, Relationship.Friendly);
         
         // Traditional Rivalries
-        SetRelationship(FactionType.Federation, FactionType.Klingons, Relationship.Hostile);
-        SetRelationship(FactionType.Federation, FactionType.Romulans, Relationship.Hostile);
-        SetRelationship(FactionType.Federation, FactionType.BorgCollective, Relationship.Hostile);
+        SetRelationship(FactionType.BarbaryPirates, FactionType.MalteseCorsairs, Relationship.Hostile);
+        SetRelationship(FactionType.LevanticPirates, FactionType.MalteseCorsairs, Relationship.Hostile);
         
-        // Commercial Relations
-        SetRelationship(FactionType.Ferengi, FactionType.Federation, Relationship.Neutral);
-        SetRelationship(FactionType.Ferengi, FactionType.Klingons, Relationship.Neutral);
+        // Regional Competitions
+        SetRelationship(FactionType.GreekPirates, FactionType.UscocPirates, Relationship.Neutral);
+        SetRelationship(FactionType.CilicianPirates, FactionType.LevanticPirates, Relationship.Neutral);
         
         // Strategic Alliances
-        SetRelationship(FactionType.Cardassians, FactionType.Dominion, Relationship.Friendly);
-        SetRelationship(FactionType.Romulans, FactionType.Cardassians, Relationship.Friendly);
+        SetRelationship(FactionType.BarbarianCorsairs, FactionType.RenegadoPirates, Relationship.Friendly);
+        SetRelationship(FactionType.LevanticPirates, FactionType.GreekPirates, Relationship.Friendly);
         
-        // Isolationist Stances
-        SetRelationship(FactionType.TholianAssembly, FactionType.Federation, Relationship.Hostile);
-        SetRelationship(FactionType.TholianAssembly, FactionType.Klingons, Relationship.Hostile);
-        
-        // The Borg vs Everyone
-        SetRelationship(FactionType.BorgCollective, FactionType.Klingons, Relationship.Hostile);
-        SetRelationship(FactionType.BorgCollective, FactionType.Romulans, Relationship.Hostile);
-        SetRelationship(FactionType.BorgCollective, FactionType.Cardassians, Relationship.Hostile);
+        // Historical Enemies
+        SetRelationship(FactionType.ProvencalPirates, FactionType.BarbaryPirates, Relationship.Hostile);
+        SetRelationship(FactionType.MalteseCorsairs, FactionType.AlgerianTaifa, Relationship.Hostile);
     }
 
     public void SetRelationship(FactionType factionA, FactionType factionB, Relationship relationship)
