@@ -3,7 +3,6 @@ using UnityEngine;
 public class AIShipController : MonoBehaviour
 {
     public Ship controlledShip;
-    public DiplomacySystem diplomacySystem;
     public float decisionInterval = 2f;
     public float patrolRadius = 100f;
     public float detectionRange = 50f;
@@ -13,10 +12,9 @@ public class AIShipController : MonoBehaviour
     private float nextDecisionTime;
     private Ship targetShip;
 
-    public void Initialize(Ship ship, DiplomacySystem diplomacy)
+    public void Initialize(Ship ship)
     {
         controlledShip = ship;
-        diplomacySystem = diplomacy;
         movement = GetComponent<ShipMovement>();
         if (movement == null)
         {
@@ -40,14 +38,6 @@ public class AIShipController : MonoBehaviour
 
     private void MakeDecisions()
     {
-        if (diplomacySystem == null)
-        {
-            // Try to find DiplomacySystem if not set
-            diplomacySystem = Object.FindAnyObjectByType<DiplomacySystem>();
-            if (diplomacySystem == null)
-                return;
-        }
-
         // Look for potential targets
         targetShip = FindNearestHostileShip();
 
@@ -76,14 +66,13 @@ public class AIShipController : MonoBehaviour
         Ship nearest = null;
         float closestDistance = detectionRange;
 
-        // Find all ships in the scene
         foreach (Ship ship in FindObjectsByType<Ship>(FindObjectsSortMode.None))
         {
             if (ship == controlledShip || ship == null)
                 continue;
 
-            // Check if ships are from different factions
-            if (ship.faction != controlledShip.faction)
+            // Check if ships are hostile according to diplomacy system
+            if (DiplomacySystem.Instance.AreHostile(controlledShip.faction, ship.faction))
             {
                 float distance = Vector3.Distance(transform.position, ship.transform.position);
                 if (distance < closestDistance)
