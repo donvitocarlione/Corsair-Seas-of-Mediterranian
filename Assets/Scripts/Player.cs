@@ -1,49 +1,75 @@
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class Player : Pirate
 {
-    [Header("Player Stats")]
-    public int level = 1;
-    public float experience = 0f;
-    
-    private void Start()
+    public string pirateName;
+    public Ship selectedShip;
+    public List<Ship> ships = new List<Ship>();
+    private FactionType faction;
+
+    void Start()
     {
-        // Initialize player-specific components
+        // Make sure the player's faction is set from ShipManager
+        if (ShipManager.Instance != null)
+        {
+            SetFaction(ShipManager.Instance.PlayerFaction);
+        }
+    }
+
+    public override void SetFaction(FactionType newFaction)
+    {
+        faction = newFaction;
+        Debug.Log($"Player faction set to: {newFaction}");
+        
+        // Update faction for all existing ships
+        foreach (Ship ship in ships)
+        {
+            if (ship != null)
+            {
+                ship.faction = newFaction;
+            }
+        }
     }
 
     public override void AddShip(Ship ship)
     {
-        // Enforce one-ship limit for new players
-        if (ships.Count == 0 || level >= 10)
+        if (ship != null)
         {
-            base.AddShip(ship);
-        }
-        else
-        {
-            Debug.Log("Cannot add more ships until reaching level 10");
+            ships.Add(ship);
+            ship.SetOwner(this);
+            ship.faction = faction; // Ensure the ship has the correct faction
+            Debug.Log($"Added ship {ship.shipName} to player's fleet. Current ship count: {ships.Count}");
         }
     }
 
-    public void GainExperience(float amount)
+    public override void RemoveShip(Ship ship)
     {
-        experience += amount;
-        CheckLevelUp();
-    }
-
-    private void CheckLevelUp()
-    {
-        int newLevel = 1 + Mathf.FloorToInt(experience / 1000); // Level up every 1000 XP
-        if (newLevel > level)
+        if (ships.Contains(ship))
         {
-            LevelUp(newLevel);
+            ships.Remove(ship);
+            if (selectedShip == ship)
+            {
+                selectedShip = null;
+            }
         }
     }
 
-    private void LevelUp(int newLevel)
+    public void SelectShip(Ship ship)
     {
-        level = newLevel;
-        // Add level up effects, particle systems, etc.
-        Debug.Log($"Level up! Now level {level}");
+        if (ships.Contains(ship))
+        {
+            if (selectedShip != null)
+            {
+                selectedShip.Deselect();
+            }
+            selectedShip = ship;
+            selectedShip.Select();
+        }
+    }
+
+    public override List<Ship> GetShips()
+    {
+        return ships;
     }
 }
