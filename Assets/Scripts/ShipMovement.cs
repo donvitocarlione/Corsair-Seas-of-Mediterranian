@@ -2,19 +2,23 @@ using UnityEngine;
 
 public class ShipMovement : MonoBehaviour
 {
-    public float floatForce = 10f; // Force applied to float the ship
-    public float airDrag = 1f; // Drag coefficient for air
-    public float waterDrag = 10f; // Water drag coefficient
-    public float waterLevel = 0f; // Y position of the water level
-    public float speed = 5f; // Speed of the ship
-    public float acceleration = 1f; // Acceleration of the ship
+    public float floatForce = 10f;
+    public float airDrag = 1f;
+    public float waterDrag = 10f;
+    public float waterLevel = 0f;
+    public float speed = 5f;
+    public float turnSpeed = 90f;
+    public float acceleration = 1f;
+    public float stoppingDistance = 1f;
+    public float rotationDamping = 0.5f;
 
     private Rigidbody rb;
     private Vector3 targetPosition;
     private bool isMoving;
     private Vector3 currentVelocity;
-    private float density = 1000f;  // Density of the ship (kg/m³) - Adjust this value
+    private float density = 1000f;
     private float shipVolume;
+    private Quaternion targetRotation;
 
     void Start()
     {
@@ -22,25 +26,34 @@ public class ShipMovement : MonoBehaviour
         if (rb == null)
         {
             Debug.LogError("Ship needs a Rigidbody!");
-            enabled = false; // Disable this script if no rigidbody is found
+            enabled = false;
             return;
         }
 
         rb.useGravity = true;
-        // Calculate the volume, you'll probably need to find a suitable method for your ship's model
-        // Example: using a bounding box
-        shipVolume = GetComponent<Collider>().bounds.size.x * GetComponent<Collider>().bounds.size.y * GetComponent<Collider>().bounds.size.z;
+        shipVolume = GetComponent<Collider>().bounds.size.x * 
+                    GetComponent<Collider>().bounds.size.y * 
+                    GetComponent<Collider>().bounds.size.z;
         rb.mass = shipVolume * density;
-        rb.linearDamping = airDrag;
-        rb.angularDamping = 2f;
-        // Constrain rotation to only Y-axis
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        rb.drag = airDrag;
+        rb.angularDrag = 2f;
+        rb.constraints = RigidbodyConstraints.FreezeRotationX | 
+                        RigidbodyConstraints.FreezeRotationZ;
     }
 
     public void SetTargetPosition(Vector3 position)
     {
         targetPosition = position;
+        targetPosition.y = transform.position.y; // Keep same height
         isMoving = true;
+
+        // Calculate target rotation immediately
+        Vector3 directionToTarget = (targetPosition - transform.position).normalized;
+        if (directionToTarget != Vector3.zero)
+        {
+            float targetAngle = Mathf.Atan2(directionToTarget.x, directionToTarget.z) * Mathf.Rad2Deg;
+            targetRotation = Quaternion.Euler(0, targetAngle, 0);
+        }
     }
 
     public void ClearTarget()
@@ -52,22 +65,44 @@ public class ShipMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (isMoving) MoveTowardsTarget();
+        if (isMoving) 
+        {
+            RotateTowardsTarget();
+            MoveTowardsTarget();
+        }
         ApplyFloatForce();
+    }
+
+    private void RotateTowardsTarget()
+    {
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 
+            turnSpeed * Time.fixedDeltaTime);
     }
 
     private void MoveTowardsTarget()
     {
-        Vector3 direction = (targetPosition - transform.position).normalized;
-        currentVelocity = Vector3.MoveTowards(currentVelocity, direction * speed, acceleration * Time.fixedDeltaTime);
-        rb.linearVelocity = currentVelocity;
+        float distanceToTarget = Vector3.Distance(transform.position, targetPosition);
 
-        // Check if the ship has reached the target position
-        if (Vector3.Distance(transform.position, targetPosition) < 0.1f)
+        if (distanceToTarget <= stoppingDistance)
         {
             isMoving = false;
             currentVelocity = Vector3.zero;
+            rb.velocity = Vector3.zero;
+            return;
         }
+
+        // Only move forward if we're mostly facing the right direction
+        float angleToTarget = Quaternion.Angle(transform.rotation, targetRotation);
+        float speedMultiplier = Mathf.Clamp01(1f - (angleToTarget / 90f));
+
+        // Use the ship's forward direction for movement
+        Vector3 moveDirection = transform.forward;
+        Vector3 targetVelocity = moveDirection * speed * speedMultiplier;
+
+        // Smoothly interpolate current velocity
+        currentVelocity = Vector3.Lerp(currentVelocity, targetVelocity, 
+            acceleration * Time.fixedDeltaTime);
+        rb.velocity = currentVelocity;
     }
 
     private void ApplyFloatForce()
@@ -77,12 +112,13 @@ public class ShipMovement : MonoBehaviour
         if (distanceToWater < 0)
         {
             Vector3 floatForceVector = Vector3.up * -distanceToWater * floatForce;
-            rb.AddForce(floatForceVector, ForceMode.Acceleration); // Use ForceMode.Acceleration
+            rb.AddForce(floatForceVector, ForceMode.Acceleration);
 
             // Add water resistance force
-            Vector3 velocityInWater = rb.linearVelocity;
+            Vector3 velocityInWater = rb.velocity;
             velocityInWater.y = 0; // Ignore vertical velocity
-            rb.AddForce(-velocityInWater.normalized * velocityInWater.magnitude * waterDrag, ForceMode.Acceleration);
+            rb.AddForce(-velocityInWater.normalized * velocityInWater.sqrMagnitude * 
+                waterDrag, ForceMode.Acceleration);
         }
     }
 }

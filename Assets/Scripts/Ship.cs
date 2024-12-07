@@ -12,6 +12,7 @@ public class Ship : MonoBehaviour
     private Rigidbody rb;
     private ShipSelector shipSelector;
     private MeshRenderer meshRenderer;
+    private bool isSelected = false;
 
     void Awake()
     {
@@ -61,6 +62,24 @@ public class Ship : MonoBehaviour
         if (shipMovement != null)
         {
             shipMovement.enabled = true;
+            shipMovement.speed = speed;
+            shipMovement.turnSpeed = turnSpeed;
+        }
+    }
+
+    public void MoveTo(Vector3 position)
+    {
+        if (shipMovement != null)
+        {
+            shipMovement.SetTargetPosition(position);
+        }
+    }
+
+    public void StopMoving()
+    {
+        if (shipMovement != null)
+        {
+            shipMovement.ClearTarget();
         }
     }
 
@@ -83,6 +102,23 @@ public class Ship : MonoBehaviour
 
         // Destroy the game object
         Destroy(gameObject);
+    }
+
+    public void SetSelected(bool selected)
+    {
+        isSelected = selected;
+        if (shipSelector != null)
+        {
+            if (selected)
+                shipSelector.Select();
+            else
+                shipSelector.Deselect();
+        }
+    }
+
+    public bool IsSelected()
+    {
+        return isSelected;
     }
 
     // Optionally override some Unity messages to ensure proper behavior
