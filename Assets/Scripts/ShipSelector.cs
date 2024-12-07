@@ -1,91 +1,76 @@
 using UnityEngine;
-using System.Collections.Generic;
 
 public class ShipSelector : MonoBehaviour
 {
-    public static ShipSelector Instance { get; private set; }
-    public Material selectedMaterial;
-    public FactionType playerFaction;
-    
-    private List<Ship> selectedShips = new List<Ship>();
-    private Camera mainCamera;
-    private LayerMask waterLayer;
+    [Header("Ship Settings")]
+    public Material selectedMaterial;  // Material when ship is selected
+    private Material originalMaterial;  // Store the original material
+    private bool isSelected = false;    // Track selection state
+
+    [Header("Faction Settings")]
+    [SerializeField] private FactionType playerFaction;
+    public FactionType PlayerFaction
+    {
+        get { return playerFaction; }
+        set 
+        { 
+            playerFaction = value;
+            // Update ship's faction if it has a Ship component
+            Ship ship = GetComponent<Ship>();
+            if (ship != null)
+            {
+                ship.faction = value;
+            }
+        }
+    }
+
+    private MeshRenderer meshRenderer;
 
     void Awake()
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
-        
-        mainCamera = Camera.main;
-        waterLayer = LayerMask.GetMask("Water");
-    }
-
-    void Update()
-    {
-        if (Input.GetMouseButtonDown(0)) HandleSelection();
-        if (Input.GetMouseButtonDown(1)) HandleMovement();
-    }
-
-    void HandleSelection()
-    {
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RaycastHit hit))
+        // Get the MeshRenderer component
+        meshRenderer = GetComponent<MeshRenderer>();
+        if (meshRenderer != null)
         {
-            Ship ship = hit.collider.GetComponent<Ship>();
-            if (ship != null && ship.faction == playerFaction)
-            {
-                if (Input.GetKey(KeyCode.LeftControl))
-                    ToggleSelection(ship);
-                else
-                {
-                    DeselectAll();
-                    SelectShip(ship);
-                }
-            }
-            else DeselectAll();
+            // Store the original material
+            originalMaterial = meshRenderer.material;
+        }
+        else
+        {
+            Debug.LogWarning("MeshRenderer not found on ship");
         }
     }
 
-    void HandleMovement()
+    public void Select()
     {
-        if (selectedShips.Count == 0) return;
-
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, waterLayer))
+        if (meshRenderer != null && selectedMaterial != null)
         {
-            foreach (Ship ship in selectedShips)
-                ship.GetComponent<ShipMovement>()?.SetTargetPosition(hit.point);
+            isSelected = true;
+            meshRenderer.material = selectedMaterial;
         }
     }
 
-    void SelectShip(Ship ship)
+    public void Deselect()
     {
-        if (!selectedShips.Contains(ship))
+        if (meshRenderer != null && originalMaterial != null)
         {
-            selectedShips.Add(ship);
-            ship.GetComponent<ShipSelection>()?.SetSelected(true, selectedMaterial);
+            isSelected = false;
+            meshRenderer.material = originalMaterial;
         }
     }
 
-    void DeselectShip(Ship ship)
+    public bool IsSelected()
     {
-        if (selectedShips.Contains(ship))
+        return isSelected;
+    }
+
+    void OnValidate()
+    {
+        // Update the ship's faction when changed in inspector
+        Ship ship = GetComponent<Ship>();
+        if (ship != null)
         {
-            selectedShips.Remove(ship);
-            ship.GetComponent<ShipSelection>()?.SetSelected(false, selectedMaterial);
+            ship.faction = playerFaction;
         }
-    }
-
-    void ToggleSelection(Ship ship)
-    {
-        if (selectedShips.Contains(ship)) DeselectShip(ship);
-        else SelectShip(ship);
-    }
-
-    void DeselectAll()
-    {
-        foreach (Ship ship in selectedShips)
-            ship.GetComponent<ShipSelection>()?.SetSelected(false, selectedMaterial);
-        selectedShips.Clear();
     }
 }
