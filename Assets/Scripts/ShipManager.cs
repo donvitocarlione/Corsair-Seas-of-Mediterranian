@@ -9,6 +9,7 @@ public class FactionShipData
     public Vector3 spawnArea;             // Center point of spawn area for this faction
     public float spawnRadius = 100f;      // Radius around spawn point where ships can appear
     public int initialShipCount = 3;      // How many ships this faction starts with
+    public bool isPlayerFaction = false;  // Whether this faction is controlled by the player
 }
 
 public class ShipManager : MonoBehaviour
@@ -17,6 +18,7 @@ public class ShipManager : MonoBehaviour
 
     [Header("References")]
     public FactionManager factionManager;
+    public DiplomacySystem diplomacySystem;
 
     [Header("Faction Ship Settings")]
     public List<FactionShipData> factionShipData;
@@ -30,6 +32,8 @@ public class ShipManager : MonoBehaviour
     private List<Vector3> occupiedPositions = new List<Vector3>();
     private Transform shipsParent;
 
+    public FactionType PlayerFaction { get; private set; }
+
     void Awake()
     {
         Debug.Log("ShipManager Awake");
@@ -42,6 +46,17 @@ public class ShipManager : MonoBehaviour
             // Create a parent object for all ships
             shipsParent = new GameObject("SpawnedShips").transform;
             shipsParent.parent = transform; // Parent it to ShipManager
+
+            // Find player faction
+            var playerFactionData = factionShipData.Find(data => data.isPlayerFaction);
+            if (playerFactionData != null)
+            {
+                PlayerFaction = playerFactionData.faction;
+            }
+            else
+            {
+                Debug.LogWarning("No player faction marked in ShipManager!");
+            }
         }
         else
         {
@@ -56,6 +71,12 @@ public class ShipManager : MonoBehaviour
         if (factionManager == null)
         {
             Debug.LogError("FactionManager reference is missing!");
+            return;
+        }
+
+        if (diplomacySystem == null)
+        {
+            Debug.LogError("DiplomacySystem reference is missing!");
             return;
         }
 
@@ -155,6 +176,21 @@ public class ShipManager : MonoBehaviour
         if (ship != null)
         {
             ship.Initialize(faction, $"{faction} Ship {activeShips[faction].Count + 1}");
+            
+            // Add appropriate control components based on faction
+            if (data.isPlayerFaction)
+            {
+                // Add player control components
+                ShipSelector selector = shipObj.AddComponent<ShipSelector>();
+                selector.PlayerFaction = faction;
+            }
+            else
+            {
+                // Add AI control components
+                AIShipController aiController = shipObj.AddComponent<AIShipController>();
+                aiController.Initialize(ship, diplomacySystem);
+            }
+
             RegisterShip(faction, ship);
             occupiedPositions.Add(spawnPos);
 
