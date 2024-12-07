@@ -1,30 +1,47 @@
 using UnityEngine;
-using UnityEngine.UI;
+using System.Collections;
 
 public class ShipSelector : MonoBehaviour
 {
-    public GameObject[] ships;
-    public Button selectButton;
-    private int selectedIndex = 0;
+    public static ShipSelector Instance { get; private set; }
+    
+    [SerializeField] private GameObject[] shipPrefabs;
+    private GameObject currentShip;
+
+    void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
 
     void Start()
     {
-        // Hide all ships initially
-        foreach (GameObject ship in ships)
-            ship.SetActive(false);
-
-        // Show the first ship and enable selection
-        ships[selectedIndex].SetActive(true);
-        selectButton.onClick.AddListener(SelectNextShip);
+        SpawnSelectedShip();
     }
 
-    void SelectNextShip()
+    public void SpawnSelectedShip()
     {
-        // Deactivate the currently selected ship
-        ships[selectedIndex].SetActive(false);
+        int selectedIndex = PlayerPrefs.GetInt("SelectedShipIndex", 0);
+        
+        if (currentShip != null)
+            Destroy(currentShip);
 
-        // Move to the next ship in the array
-        selectedIndex = (selectedIndex + 1) % ships.Length;
-        ships[selectedIndex].SetActive(true);
+        if (selectedIndex < shipPrefabs.Length)
+        {
+            Vector3 spawnPosition = new Vector3(0, 0, 0); // Adjust as needed
+            currentShip = Instantiate(shipPrefabs[selectedIndex], spawnPosition, Quaternion.identity);
+        }
+    }
+
+    public GameObject GetCurrentShip()
+    {
+        return currentShip;
     }
 }
