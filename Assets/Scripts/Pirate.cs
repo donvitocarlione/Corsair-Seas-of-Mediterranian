@@ -29,7 +29,7 @@ public class Pirate : MonoBehaviour
         pirateName = $"{titles[Random.Range(0, titles.Length)]} {firstNames[Random.Range(0, firstNames.Length)]} {lastNames[Random.Range(0, lastNames.Length)]}";
     }
 
-    public void AddShip(Ship ship)
+    public virtual void AddShip(Ship ship)
     {
         if (!ships.Contains(ship))
         {
@@ -44,7 +44,7 @@ public class Pirate : MonoBehaviour
         }
     }
 
-    public void RemoveShip(Ship ship)
+    public virtual void RemoveShip(Ship ship)
     {
         if (ships.Contains(ship))
         {
@@ -63,7 +63,7 @@ public class Pirate : MonoBehaviour
         }
     }
 
-    private void ApplySkillsToShip(Ship ship)
+    protected virtual void ApplySkillsToShip(Ship ship)
     {
         if (ship != null)
         {
@@ -83,7 +83,7 @@ public class Pirate : MonoBehaviour
         }
     }
 
-    public bool SelectShip(Ship ship)
+    public virtual bool SelectShip(Ship ship)
     {
         if (ships.Contains(ship))
         {
@@ -97,7 +97,7 @@ public class Pirate : MonoBehaviour
         return false;
     }
 
-    public void SetFaction(Faction newFaction)
+    public virtual void SetFaction(Faction newFaction)
     {
         faction = newFaction;
     }
