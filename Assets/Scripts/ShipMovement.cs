@@ -15,10 +15,10 @@ public class ShipMovement : MonoBehaviour
     [Header("Movement Modifiers")]
     public float speedMultiplier = 1f;
     public float turnSpeedMultiplier = 1f;
+    public bool isMoving { get; private set; }
 
     private Rigidbody rb;
     private Vector3 targetPosition;
-    private bool isMoving;
     private Vector3 currentVelocity;
     private float density = 1000f;
     private float shipVolume;

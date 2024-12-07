@@ -56,7 +56,7 @@ public class AIShipController : MonoBehaviour
             // Move to intercept target
             movement.SetTargetPosition(targetShip.transform.position);
         }
-        else
+        else if (!movement.isMoving)
         {
             // Continue patrolling
             Patrol();
@@ -65,13 +65,10 @@ public class AIShipController : MonoBehaviour
 
     private void Patrol()
     {
-        if (!movement.isMoving)
-        {
-            // Generate new patrol point
-            Vector2 randomCircle = Random.insideUnitCircle * patrolRadius;
-            Vector3 newPosition = homePosition + new Vector3(randomCircle.x, 0, randomCircle.y);
-            movement.SetTargetPosition(newPosition);
-        }
+        // Generate new patrol point
+        Vector2 randomCircle = Random.insideUnitCircle * patrolRadius;
+        Vector3 newPosition = homePosition + new Vector3(randomCircle.x, 0, randomCircle.y);
+        movement.SetTargetPosition(newPosition);
     }
 
     private Ship FindNearestHostileShip()
@@ -85,8 +82,8 @@ public class AIShipController : MonoBehaviour
             if (ship == controlledShip || ship == null)
                 continue;
 
-            // Check if ship is hostile
-            if (diplomacySystem.AreFactionsHostile(controlledShip.faction, ship.faction))
+            // Check if ships are from different factions
+            if (ship.faction != controlledShip.faction)
             {
                 float distance = Vector3.Distance(transform.position, ship.transform.position);
                 if (distance < closestDistance)
