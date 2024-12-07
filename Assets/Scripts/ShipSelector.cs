@@ -2,60 +2,38 @@ using UnityEngine;
 
 public class ShipSelector : MonoBehaviour
 {
-    [Header("Selection Settings")]
-    public Material selectedMaterial;  // Material when ship is selected
-    private bool isSelected = false;    // Track selection state
+    public FactionType PlayerFaction { get; set; }
+    private Ship ship;
+    private bool isSelected = false;
 
-    private Ship shipComponent;
-
-    void Awake()
+    void Start()
     {
-        // Get or add required components
-        shipComponent = GetComponent<Ship>();
-        if (shipComponent == null)
+        ship = GetComponent<Ship>();
+        if (ship == null)
         {
-            shipComponent = gameObject.AddComponent<Ship>();
-            Debug.Log($"Added Ship component to {gameObject.name}");
+            Debug.LogError("Ship component not found on object with ShipSelector");
         }
-
-        Collider shipCollider = GetComponent<Collider>();
-        if (shipCollider == null)
-        {
-            shipCollider = gameObject.AddComponent<BoxCollider>();
-            Debug.Log($"Added BoxCollider to {gameObject.name}");
-        }
-
-        // Initial setup
-        isSelected = false;
-    }
-
-    public void Select()
-    {
-        if (shipComponent != null)
-        {
-            isSelected = true;
-            shipComponent.Select();
-            Debug.Log($"Selected ship: {gameObject.name}");
-        }
-    }
-
-    public void Deselect()
-    {
-        if (shipComponent != null)
-        {
-            isSelected = false;
-            shipComponent.Deselect();
-            Debug.Log($"Deselected ship: {gameObject.name}");
-        }
-    }
-
-    public bool IsSelected()
-    {
-        return isSelected;
     }
 
     public bool IsSelectable()
     {
-        return shipComponent != null && shipComponent.faction == FactionType.Player;
+        return ship != null && ship.faction == PlayerFaction;
+    }
+
+    public void Select()
+    {
+        if (!IsSelectable()) return;
+        
+        isSelected = true;
+        ship.Select();
+    }
+
+    public void Deselect()
+    {
+        isSelected = false;
+        if (ship != null)
+        {
+            ship.Deselect();
+        }
     }
 }

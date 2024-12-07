@@ -21,6 +21,18 @@ public class Ship : MonoBehaviour
     public Pirate owner;
     public GameObject selectionIndicator;  // Assign a visual indicator object
 
+    public void Initialize(FactionType faction, string shipName)
+    {
+        this.faction = faction;
+        this.shipName = shipName;
+        this.health = 100f;
+        this.currentCrew = maxCrew;
+        this.currentCargo = 0f;
+        isSelected = false;
+        if (selectionIndicator != null)
+            selectionIndicator.SetActive(false);
+    }
+
     private void Start()
     {
         isSelected = false;

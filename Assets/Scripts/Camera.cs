@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class AgeOfEmpiresCamera : MonoBehaviour
+public class Camera : MonoBehaviour
 {
     [Header("Movement Settings")]
     public float zoomSpeed = 10f;
@@ -30,7 +30,6 @@ public class AgeOfEmpiresCamera : MonoBehaviour
     private float currentZoom;
     private float currentRotationAngle;
     private Vector3 lastMousePosition;
-    private bool isRotating;
 
     void Start()
     {
@@ -91,13 +90,8 @@ public class AgeOfEmpiresCamera : MonoBehaviour
         // Right mouse button rotation
         if (Input.GetMouseButton(1))
         {
-            isRotating = true;
             float rotationDelta = Input.GetAxis("Mouse X") * rotationSpeed * Time.deltaTime;
             currentRotationAngle += rotationDelta;
-        }
-        else
-        {
-            isRotating = false;
         }
     }
 
