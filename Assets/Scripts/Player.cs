@@ -6,22 +6,10 @@ public class Player : Pirate
     [Header("Player Stats")]
     public int level = 1;
     public float experience = 0f;
-    public Dictionary<string, float> skills = new Dictionary<string, float>();
-    public List<Quest> questLog = new List<Quest>();
-
+    
     private void Start()
     {
         // Initialize player-specific components
-        InitializeSkills();
-    }
-
-    private void InitializeSkills()
-    {
-        // Initialize basic skills
-        skills["Navigation"] = 1f;
-        skills["Combat"] = 1f;
-        skills["Trading"] = 1f;
-        skills["Leadership"] = 1f;
     }
 
     public override void AddShip(Ship ship)
@@ -55,47 +43,7 @@ public class Player : Pirate
     private void LevelUp(int newLevel)
     {
         level = newLevel;
-        GainSkillPoints();
         // Add level up effects, particle systems, etc.
         Debug.Log($"Level up! Now level {level}");
-    }
-
-    private void GainSkillPoints()
-    {
-        // Add skill points that can be distributed
-        if (!skills.ContainsKey("AvailablePoints"))
-        {
-            skills["AvailablePoints"] = 0;
-        }
-        skills["AvailablePoints"] += 1;
-    }
-
-    public void AddQuest(Quest quest)
-    {
-        if (!questLog.Contains(quest))
-        {
-            questLog.Add(quest);
-        }
-    }
-
-    // Improve a specific skill using available points
-    public bool ImproveSkill(string skillName)
-    {
-        if (skills.ContainsKey("AvailablePoints") && skills["AvailablePoints"] > 0)
-        {
-            if (skills.ContainsKey(skillName))
-            {
-                skills[skillName] += 1f;
-                skills["AvailablePoints"] -= 1;
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void OnMouseDown()
-    {
-        // Handle player selection
-        Debug.Log("Player selected");
     }
 }

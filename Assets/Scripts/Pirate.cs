@@ -1,52 +1,83 @@
-using System;
+using System.Collections.Generic;
 using UnityEngine;
 
-public class Pirate
+public class Pirate : MonoBehaviour
 {
-    public FactionType faction;
-    public string name;
-    public int health;
-    public float attackSpeed;
-    public int reputation;         // Reputation affects trading and interaction options
-    public int crewSize;          // Size of the pirate's crew
-    public float combatSkill;     // Affects combat effectiveness
-    public string specialization; // E.g., "Boarding", "Cannon warfare", "Navigation"
+    public string pirateName;
+    public List<Ship> ships = new List<Ship>();
+    public Faction faction;
+    public float reputation;
+    public int gold;
+    public Ship selectedShip;
 
-    public Pirate(FactionType faction, string name, int health, float attackSpeed)
+    public virtual void AddShip(Ship ship)  // Added virtual keyword here
     {
-        this.faction = faction;
-        this.name = name;
-        this.health = health;
-        this.attackSpeed = attackSpeed;
-        this.reputation = 0;
-        this.crewSize = 50;  // Default crew size
-        this.combatSkill = 1.0f;
-        this.specialization = "None";
+        if (!ships.Contains(ship))
+        {
+            ships.Add(ship);
+            ship.SetOwner(this);
+            
+            if (ships.Count == 1)
+            {
+                SelectShip(ship);
+            }
+        }
     }
 
-    public void Initialize(Pirate pirate)
+    public virtual void RemoveShip(Ship ship)
     {
-        this.faction = pirate.faction;
-        this.name = pirate.name;
-        this.health = pirate.health;
-        this.attackSpeed = pirate.attackSpeed;
-        this.reputation = pirate.reputation;
-        this.crewSize = pirate.crewSize;
-        this.combatSkill = pirate.combatSkill;
-        this.specialization = pirate.specialization;
+        if (ships.Contains(ship))
+        {
+            ships.Remove(ship);
+            ship.SetOwner(null);
+            
+            if (selectedShip == ship)
+            {
+                selectedShip = ships.Count > 0 ? ships[0] : null;
+                if (selectedShip != null)
+                {
+                    SelectShip(selectedShip);
+                }
+            }
+        }
     }
 
-    public void Attack(Ship target)
+    public virtual bool SelectShip(Ship ship)
     {
-        // Calculate damage based on combat skill and crew size
-        float damageMultiplier = combatSkill * (crewSize / 50f);
-        // Implementation will be connected to the Ship's damage system
+        if (ships.Contains(ship))
+        {
+            if (selectedShip != null)
+            {
+                selectedShip.Deselect();
+            }
+            selectedShip = ship;
+            return ship.Select();
+        }
+        return false;
     }
 
-    public void UpdateReputation(int change)
+    public void SetFaction(Faction newFaction)
     {
-        reputation += change;
-        // Clamp reputation between -100 and 100
-        reputation = Mathf.Clamp(reputation, -100, 100);
+        if (faction != null)
+        {
+            faction.RemoveMember(this);
+        }
+        faction = newFaction;
+    }
+
+    public void JoinFaction(Faction newFaction)
+    {
+        if (newFaction != null)
+        {
+            newFaction.AddMember(this);
+        }
+    }
+
+    public void LeaveFaction()
+    {
+        if (faction != null)
+        {
+            faction.RemoveMember(this);
+        }
     }
 }
