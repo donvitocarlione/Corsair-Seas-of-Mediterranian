@@ -1,117 +1,151 @@
 using UnityEngine;
 
-[RequireComponent(typeof(Collider))] // Ensure there's a collider for selection
+[RequireComponent(typeof(Collider))]
+[RequireComponent(typeof(MeshRenderer))] // Ensure there's always a MeshRenderer component
 public class ShipSelection : MonoBehaviour
 {
     [SerializeField]
-    private Renderer targetRenderer; // Optional: Directly assign a specific renderer
+    private MeshRenderer[] targetRenderers; // Array to hold multiple renderers
     
-    private Material originalMaterial;
-    private Renderer shipRenderer;
-    private bool hasValidRenderer = false;
+    private Material[] originalMaterials;
+    private bool initialized = false;
 
     void OnValidate()
     {
-        // This helps catch missing renderer issues in the editor
-        if (targetRenderer == null)
+        if (targetRenderers == null || targetRenderers.Length == 0)
         {
-            FindRenderer();
+            FindRenderers();
         }
     }
 
     void Awake()
     {
-        FindRenderer();
-        if (hasValidRenderer)
+        if (!initialized)
         {
-            originalMaterial = shipRenderer.material;
+            Initialize();
         }
     }
 
-    private void FindRenderer()
+    void Initialize()
     {
-        // Use manually assigned renderer if available
-        if (targetRenderer != null)
+        FindRenderers();
+        if (targetRenderers != null && targetRenderers.Length > 0)
         {
-            shipRenderer = targetRenderer;
-            hasValidRenderer = true;
-            return;
+            // Store original materials
+            originalMaterials = new Material[targetRenderers.Length];
+            for (int i = 0; i < targetRenderers.Length; i++)
+            {
+                if (targetRenderers[i] != null && targetRenderers[i].material != null)
+                {
+                    originalMaterials[i] = targetRenderers[i].material;
+                }
+            }
+            initialized = true;
         }
-
-        // Try to find renderer on this object
-        shipRenderer = GetComponent<Renderer>();
-
-        // If not found, look for renderers in children
-        if (shipRenderer == null)
+        else
         {
-            shipRenderer = GetComponentInChildren<Renderer>();
+            Debug.LogError($"[ShipSelection] No MeshRenderers found on {gameObject.name} or its children.");
         }
+    }
 
-        hasValidRenderer = shipRenderer != null;
+    private void FindRenderers()
+    {
+        // Get all mesh renderers in children (including this object)
+        targetRenderers = GetComponentsInChildren<MeshRenderer>();
 
-        if (!hasValidRenderer)
+        if (targetRenderers == null || targetRenderers.Length == 0)
         {
-            Debug.LogError($"[ShipSelection] No Renderer found on {gameObject.name} or its children. Please either:\n" +
-                          "1. Add a Mesh Renderer component to this object or a child\n" +
-                          "2. Assign a specific renderer in the inspector");
+            // If no renderers found, at least get the required one on this object
+            var selfRenderer = GetComponent<MeshRenderer>();
+            if (selfRenderer != null)
+            {
+                targetRenderers = new MeshRenderer[] { selfRenderer };
+            }
+        }
 
 #if UNITY_EDITOR
+        if (targetRenderers == null || targetRenderers.Length == 0)
+        {
             // Visual debugging in scene view
             Debug.DrawLine(transform.position, transform.position + Vector3.up * 2f, Color.red, 5f);
             UnityEditor.EditorGUIUtility.PingObject(gameObject);
-#endif
         }
+#endif
     }
 
     public void SetSelected(bool selected, Material selectedMaterial)
     {
-        if (!hasValidRenderer)
+        if (!initialized)
         {
-            Debug.LogError($"[ShipSelection] Cannot set selection state for {gameObject.name} - no valid renderer found!");
+            Initialize();
+        }
+
+        if (targetRenderers == null || targetRenderers.Length == 0)
+        {
+            Debug.LogError($"[ShipSelection] Cannot set selection state for {gameObject.name} - no valid renderers found!");
             return;
         }
 
-        if (selected && selectedMaterial != null)
+        foreach (var renderer in targetRenderers)
         {
-            shipRenderer.material = selectedMaterial;
-            Debug.Log($"[ShipSelection] Selected {gameObject.name}");
+            if (renderer != null)
+            {
+                if (selected && selectedMaterial != null)
+                {
+                    renderer.material = selectedMaterial;
+                }
+                else if (!selected && originalMaterials != null)
+                {
+                    // Find the corresponding original material
+                    int index = System.Array.IndexOf(targetRenderers, renderer);
+                    if (index >= 0 && index < originalMaterials.Length && originalMaterials[index] != null)
+                    {
+                        renderer.material = originalMaterials[index];
+                    }
+                }
+            }
         }
-        else if (originalMaterial != null)
+
+        if (selected)
         {
-            shipRenderer.material = originalMaterial;
-            Debug.Log($"[ShipSelection] Deselected {gameObject.name}");
+            Debug.Log($"[ShipSelection] Selected {gameObject.name}");
         }
         else
         {
-            Debug.LogWarning($"[ShipSelection] Original material is missing for {gameObject.name}");
+            Debug.Log($"[ShipSelection] Deselected {gameObject.name}");
         }
     }
 
     private void OnDestroy()
     {
         // Clean up material references
-        if (originalMaterial != null)
+        if (originalMaterials != null)
         {
-            if (Application.isPlaying)
+            foreach (var material in originalMaterials)
             {
-                Destroy(originalMaterial);
-            }
-            else
-            {
-                DestroyImmediate(originalMaterial);
+                if (material != null)
+                {
+                    if (Application.isPlaying)
+                    {
+                        Destroy(material);
+                    }
+                    else
+                    {
+                        DestroyImmediate(material);
+                    }
+                }
             }
         }
     }
 
 #if UNITY_EDITOR
-    // Visual debugging in scene view
     private void OnDrawGizmos()
     {
-        if (!hasValidRenderer)
+        if (targetRenderers == null || targetRenderers.Length == 0)
         {
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(transform.position, 1f);
-            UnityEditor.Handles.Label(transform.position + Vector3.up * 1.5f, "Missing Renderer!");
+            UnityEditor.Handles.Label(transform.position + Vector3.up * 1.5f, "Missing MeshRenderer!");
         }
     }
 #endif
