@@ -5,11 +5,30 @@ using System.Collections.Generic;
 public class FactionData
 {
     public FactionType faction;
+    public string name;
+    public Color color = Color.white;
+    public float reputation = 50f;
     public List<Ship> ships = new List<Ship>();
+    public List<Pirate> pirates = new List<Pirate>();
+    public List<Port> ports = new List<Port>();
     public string baseLocation;    // Main port or base of operations
     public int influence;          // Faction's influence in the Mediterranean
-    public List<string> allies = new List<string>();
     public int resourceLevel;      // Economic resources available to the faction
+    public Dictionary<FactionType, float> relations = new Dictionary<FactionType, float>();
+
+    public void SetRelation(FactionType otherFaction, float value)
+    {
+        relations[otherFaction] = Mathf.Clamp(value, 0f, 100f);
+    }
+
+    public float GetRelation(FactionType otherFaction)
+    {
+        if (relations.TryGetValue(otherFaction, out float value))
+        {
+            return value;
+        }
+        return 50f; // Default neutral relation
+    }
 }
 
 public class FactionManager : MonoBehaviour
@@ -41,30 +60,38 @@ public class FactionManager : MonoBehaviour
         // Initialize each faction with historical bases and characteristics
         factions[FactionType.BarbaryPirates] = new FactionData { 
             faction = FactionType.BarbaryPirates,
+            name = "Barbary Pirates",
             baseLocation = "Algiers",
             influence = 80,
-            resourceLevel = 70
+            resourceLevel = 70,
+            color = new Color(0.8f, 0.2f, 0.2f) // Red
         };
 
         factions[FactionType.MalteseCorsairs] = new FactionData {
             faction = FactionType.MalteseCorsairs,
+            name = "Maltese Corsairs",
             baseLocation = "Valletta",
             influence = 60,
-            resourceLevel = 65
+            resourceLevel = 65,
+            color = new Color(0.2f, 0.2f, 0.8f) // Blue
         };
 
         factions[FactionType.UscocPirates] = new FactionData {
             faction = FactionType.UscocPirates,
+            name = "Uscoc Pirates",
             baseLocation = "Senj",
             influence = 40,
-            resourceLevel = 30
+            resourceLevel = 30,
+            color = new Color(0.2f, 0.8f, 0.2f) // Green
         };
 
         factions[FactionType.LevanticPirates] = new FactionData {
             faction = FactionType.LevanticPirates,
+            name = "Levantic Pirates",
             baseLocation = "Rhodes",
             influence = 50,
-            resourceLevel = 45
+            resourceLevel = 45,
+            color = new Color(0.8f, 0.8f, 0.2f) // Yellow
         };
 
         // Initialize other factions with default values
@@ -74,9 +101,23 @@ public class FactionManager : MonoBehaviour
             {
                 factions[faction] = new FactionData { 
                     faction = faction,
+                    name = faction.ToString(),
                     influence = 50,
-                    resourceLevel = 50
+                    resourceLevel = 50,
+                    color = Color.gray
                 };
+            }
+        }
+
+        // Initialize relations between factions
+        foreach (var faction in factions.Values)
+        {
+            foreach (FactionType otherFaction in System.Enum.GetValues(typeof(FactionType)))
+            {
+                if (faction.faction != otherFaction)
+                {
+                    faction.SetRelation(otherFaction, 50f); // Default neutral relations
+                }
             }
         }
     }
