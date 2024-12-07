@@ -6,11 +6,15 @@ public class ShipMovement : MonoBehaviour
     public float airDrag = 1f;
     public float waterDrag = 10f;
     public float waterLevel = 0f;
-    public float speed = 5f;
-    public float turnSpeed = 90f;
+    public float baseSpeed = 5f;
+    public float baseTurnSpeed = 90f;
     public float acceleration = 1f;
     public float stoppingDistance = 1f;
     public float rotationDamping = 0.5f;
+
+    [Header("Movement Modifiers")]
+    public float speedMultiplier = 1f;
+    public float turnSpeedMultiplier = 1f;
 
     private Rigidbody rb;
     private Vector3 targetPosition;
@@ -30,6 +34,11 @@ public class ShipMovement : MonoBehaviour
             return;
         }
 
+        InitializePhysics();
+    }
+
+    private void InitializePhysics()
+    {
         rb.useGravity = true;
         shipVolume = GetComponent<Collider>().bounds.size.x * 
                     GetComponent<Collider>().bounds.size.y * 
@@ -39,6 +48,18 @@ public class ShipMovement : MonoBehaviour
         rb.angularDrag = 2f;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | 
                         RigidbodyConstraints.FreezeRotationZ;
+    }
+
+    public void ApplyNavigationBonus(float bonus)
+    {
+        speedMultiplier = bonus;
+        turnSpeedMultiplier = Mathf.Lerp(1f, bonus, 0.5f);
+    }
+
+    public void ResetNavigationBonus()
+    {
+        speedMultiplier = 1f;
+        turnSpeedMultiplier = 1f;
     }
 
     public void SetTargetPosition(Vector3 position)
@@ -75,8 +96,9 @@ public class ShipMovement : MonoBehaviour
 
     private void RotateTowardsTarget()
     {
+        float currentTurnSpeed = baseTurnSpeed * turnSpeedMultiplier;
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 
-            turnSpeed * Time.fixedDeltaTime);
+            currentTurnSpeed * Time.fixedDeltaTime);
     }
 
     private void MoveTowardsTarget()
@@ -93,11 +115,14 @@ public class ShipMovement : MonoBehaviour
 
         // Only move forward if we're mostly facing the right direction
         float angleToTarget = Quaternion.Angle(transform.rotation, targetRotation);
-        float speedMultiplier = Mathf.Clamp01(1f - (angleToTarget / 90f));
+        float angleMult = Mathf.Clamp01(1f - (angleToTarget / 90f));
+
+        // Calculate final speed with all multipliers
+        float currentSpeed = baseSpeed * speedMultiplier;
 
         // Use the ship's forward direction for movement
         Vector3 moveDirection = transform.forward;
-        Vector3 targetVelocity = moveDirection * speed * speedMultiplier;
+        Vector3 targetVelocity = moveDirection * currentSpeed * angleMult;
 
         // Smoothly interpolate current velocity
         currentVelocity = Vector3.Lerp(currentVelocity, targetVelocity, 

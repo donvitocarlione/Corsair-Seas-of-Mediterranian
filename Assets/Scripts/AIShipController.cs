@@ -1,197 +1,102 @@
 using UnityEngine;
-using System.Collections.Generic;
 
 public class AIShipController : MonoBehaviour
 {
-    public Ship ship;
-    public FactionManager factionManager;
+    public Ship controlledShip;
     public DiplomacySystem diplomacySystem;
+    public float decisionInterval = 2f;
+    public float patrolRadius = 100f;
+    public float detectionRange = 50f;
+
+    private ShipMovement movement;
+    private Vector3 homePosition;
+    private float nextDecisionTime;
     private Ship targetShip;
-    
-    [Header("AI Settings")]
-    public float patrolRadius = 50f;         // How far the ship will patrol
-    public float updateTargetInterval = 2f;  // How often to update target/decision
-    public float engageDistance = 20f;       // Distance at which to engage enemies
-    public float fleeHealthThreshold = 0.3f; // Percentage of health to flee at
-    
-    private Vector3 patrolCenter;
-    private Vector3 currentPatrolPoint;
-    private float nextUpdateTime;
-    private ShipMovement shipMovement;
-    private AIState currentState = AIState.Patrolling;
-    
-    private enum AIState
-    {
-        Patrolling,
-        Pursuing,
-        Engaging,
-        Fleeing
-    }
 
-    void Start()
+    public void Initialize(Ship ship, DiplomacySystem diplomacy)
     {
-        Initialize(ship, diplomacySystem);
-        shipMovement = GetComponent<ShipMovement>();
-        patrolCenter = transform.position; // Use spawn position as patrol center
-        SetNewPatrolPoint();
-    }
-
-    public void Initialize(Ship ship, DiplomacySystem diplomacySystem)
-    {
-        this.ship = ship;
-        if (this.ship == null)
+        controlledShip = ship;
+        diplomacySystem = diplomacy;
+        movement = GetComponent<ShipMovement>();
+        if (movement == null)
         {
-            Debug.LogError("Ship component not found on this GameObject.");
+            Debug.LogError("ShipMovement component missing!");
+            enabled = false;
             return;
         }
 
-        factionManager = FindObjectOfType<FactionManager>();
-        if (factionManager == null)
-        {
-            Debug.LogError("FactionManager not found in the scene.");
-        }
-
-        this.diplomacySystem = diplomacySystem;
-        if (this.diplomacySystem == null)
-        {
-            Debug.LogError("DiplomacySystem not found in the scene.");
-        }
+        homePosition = transform.position;
+        nextDecisionTime = Time.time + Random.Range(0f, decisionInterval);
     }
 
     void Update()
     {
-        if (Time.time >= nextUpdateTime)
+        if (Time.time >= nextDecisionTime)
         {
-            UpdateAIState();
-            nextUpdateTime = Time.time + updateTargetInterval;
-        }
-
-        ExecuteCurrentState();
-    }
-
-    void UpdateAIState()
-    {
-        // Check health for fleeing
-        if (ship.health / 100f <= fleeHealthThreshold && currentState != AIState.Fleeing)
-        {
-            currentState = AIState.Fleeing;
-            return;
-        }
-
-        // Look for enemies if not fleeing
-        if (currentState != AIState.Fleeing)
-        {
-            Ship nearestEnemy = FindNearestEnemy();
-            if (nearestEnemy != null)
-            {
-                targetShip = nearestEnemy;
-                float distanceToTarget = Vector3.Distance(transform.position, targetShip.transform.position);
-                
-                if (distanceToTarget <= engageDistance)
-                    currentState = AIState.Engaging;
-                else
-                    currentState = AIState.Pursuing;
-            }
-            else if (currentState != AIState.Patrolling)
-            {
-                currentState = AIState.Patrolling;
-                SetNewPatrolPoint();
-            }
+            MakeDecisions();
+            nextDecisionTime = Time.time + decisionInterval;
         }
     }
 
-    void ExecuteCurrentState()
+    private void MakeDecisions()
     {
-        switch (currentState)
+        if (diplomacySystem == null)
         {
-            case AIState.Patrolling:
-                ExecutePatrolling();
-                break;
-
-            case AIState.Pursuing:
-                if (targetShip != null)
-                    shipMovement.SetTargetPosition(targetShip.transform.position);
-                break;
-
-            case AIState.Engaging:
-                if (targetShip != null)
-                {
-                    Vector3 directionToTarget = (targetShip.transform.position - transform.position).normalized;
-                    Vector3 engagePosition = targetShip.transform.position - directionToTarget * (engageDistance * 0.8f);
-                    shipMovement.SetTargetPosition(engagePosition);
-                    // TODO: Add combat logic here
-                }
-                break;
-
-            case AIState.Fleeing:
-                ExecuteFleeing();
-                break;
+            // Try to find DiplomacySystem if not set
+            diplomacySystem = Object.FindAnyObjectByType<DiplomacySystem>();
+            if (diplomacySystem == null)
+                return;
         }
-    }
 
-    void ExecutePatrolling()
-    {
-        if (Vector3.Distance(transform.position, currentPatrolPoint) < 5f)
-        {
-            SetNewPatrolPoint();
-        }
-        shipMovement.SetTargetPosition(currentPatrolPoint);
-    }
+        // Look for potential targets
+        targetShip = FindNearestHostileShip();
 
-    void ExecuteFleeing()
-    {
         if (targetShip != null)
         {
-            Vector3 fleeDirection = transform.position - targetShip.transform.position;
-            Vector3 fleePosition = transform.position + fleeDirection.normalized * patrolRadius;
-            shipMovement.SetTargetPosition(fleePosition);
+            // Move to intercept target
+            movement.SetTargetPosition(targetShip.transform.position);
         }
         else
         {
-            currentState = AIState.Patrolling;
+            // Continue patrolling
+            Patrol();
         }
     }
 
-    void SetNewPatrolPoint()
+    private void Patrol()
     {
-        float randomAngle = Random.Range(0f, 360f);
-        float randomDistance = Random.Range(patrolRadius * 0.3f, patrolRadius);
-        
-        Vector3 offset = Quaternion.Euler(0, randomAngle, 0) * Vector3.forward * randomDistance;
-        currentPatrolPoint = patrolCenter + offset;
-        currentPatrolPoint.y = transform.position.y; // Keep same height
+        if (!movement.isMoving)
+        {
+            // Generate new patrol point
+            Vector2 randomCircle = Random.insideUnitCircle * patrolRadius;
+            Vector3 newPosition = homePosition + new Vector3(randomCircle.x, 0, randomCircle.y);
+            movement.SetTargetPosition(newPosition);
+        }
     }
 
-    Ship FindNearestEnemy()
+    private Ship FindNearestHostileShip()
     {
-        if (diplomacySystem == null || factionManager == null) return null;
+        Ship nearest = null;
+        float closestDistance = detectionRange;
 
-        Ship nearestEnemy = null;
-        float nearestDistance = float.MaxValue;
-
-        foreach (KeyValuePair<FactionType, FactionData> factionPair in factionManager.factions)
+        // Find all ships in the scene
+        foreach (Ship ship in FindObjectsByType<Ship>(FindObjectsSortMode.None))
         {
-            List<Ship> factionShips = factionManager.GetFactionShips(factionPair.Key);
-            foreach (Ship otherShip in factionShips)
+            if (ship == controlledShip || ship == null)
+                continue;
+
+            // Check if ship is hostile
+            if (diplomacySystem.AreFactionsHostile(controlledShip.faction, ship.faction))
             {
-                if (otherShip != this.ship && otherShip.gameObject.activeInHierarchy)
+                float distance = Vector3.Distance(transform.position, ship.transform.position);
+                if (distance < closestDistance)
                 {
-                    DiplomacySystem.Relationship relationship = 
-                        diplomacySystem.GetRelationship(this.ship.faction, otherShip.faction);
-                    
-                    if (relationship == DiplomacySystem.Relationship.Hostile)
-                    {
-                        float distance = Vector3.Distance(transform.position, otherShip.transform.position);
-                        if (distance < nearestDistance)
-                        {
-                            nearestDistance = distance;
-                            nearestEnemy = otherShip;
-                        }
-                    }
+                    closestDistance = distance;
+                    nearest = ship;
                 }
             }
         }
 
-        return nearestEnemy;
+        return nearest;
     }
 }
