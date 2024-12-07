@@ -1,47 +1,91 @@
 using UnityEngine;
-using System.Collections;
+using System.Collections.Generic;
 
 public class ShipSelector : MonoBehaviour
 {
     public static ShipSelector Instance { get; private set; }
+    public Material selectedMaterial;
+    public FactionType playerFaction;
     
-    [SerializeField] private GameObject[] shipPrefabs;
-    private GameObject currentShip;
+    private List<Ship> selectedShips = new List<Ship>();
+    private Camera mainCamera;
+    private LayerMask waterLayer;
 
     void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-    }
-
-    void Start()
-    {
-        SpawnSelectedShip();
-    }
-
-    public void SpawnSelectedShip()
-    {
-        int selectedIndex = PlayerPrefs.GetInt("SelectedShipIndex", 0);
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
         
-        if (currentShip != null)
-            Destroy(currentShip);
+        mainCamera = Camera.main;
+        waterLayer = LayerMask.GetMask("Water");
+    }
 
-        if (selectedIndex < shipPrefabs.Length)
+    void Update()
+    {
+        if (Input.GetMouseButtonDown(0)) HandleSelection();
+        if (Input.GetMouseButtonDown(1)) HandleMovement();
+    }
+
+    void HandleSelection()
+    {
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(ray, out RaycastHit hit))
         {
-            Vector3 spawnPosition = new Vector3(0, 0, 0); // Adjust as needed
-            currentShip = Instantiate(shipPrefabs[selectedIndex], spawnPosition, Quaternion.identity);
+            Ship ship = hit.collider.GetComponent<Ship>();
+            if (ship != null && ship.faction == playerFaction)
+            {
+                if (Input.GetKey(KeyCode.LeftControl))
+                    ToggleSelection(ship);
+                else
+                {
+                    DeselectAll();
+                    SelectShip(ship);
+                }
+            }
+            else DeselectAll();
         }
     }
 
-    public GameObject GetCurrentShip()
+    void HandleMovement()
     {
-        return currentShip;
+        if (selectedShips.Count == 0) return;
+
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, waterLayer))
+        {
+            foreach (Ship ship in selectedShips)
+                ship.GetComponent<ShipMovement>()?.SetTargetPosition(hit.point);
+        }
+    }
+
+    void SelectShip(Ship ship)
+    {
+        if (!selectedShips.Contains(ship))
+        {
+            selectedShips.Add(ship);
+            ship.GetComponent<ShipSelection>()?.SetSelected(true, selectedMaterial);
+        }
+    }
+
+    void DeselectShip(Ship ship)
+    {
+        if (selectedShips.Contains(ship))
+        {
+            selectedShips.Remove(ship);
+            ship.GetComponent<ShipSelection>()?.SetSelected(false, selectedMaterial);
+        }
+    }
+
+    void ToggleSelection(Ship ship)
+    {
+        if (selectedShips.Contains(ship)) DeselectShip(ship);
+        else SelectShip(ship);
+    }
+
+    void DeselectAll()
+    {
+        foreach (Ship ship in selectedShips)
+            ship.GetComponent<ShipSelection>()?.SetSelected(false, selectedMaterial);
+        selectedShips.Clear();
     }
 }
