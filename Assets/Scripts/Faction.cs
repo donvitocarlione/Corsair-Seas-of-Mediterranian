@@ -21,7 +21,7 @@ public class Faction : MonoBehaviour
         if (!members.Contains(pirate))
         {
             members.Add(pirate);
-            pirate.SetFaction(this);
+            pirate.SetFaction(factionType);
         }
     }
 
@@ -30,7 +30,7 @@ public class Faction : MonoBehaviour
         if (members.Contains(pirate))
         {
             members.Remove(pirate);
-            pirate.SetFaction(null);
+            pirate.SetFaction(FactionType.None); // Use None instead of null
         }
     }
 

@@ -59,10 +59,11 @@ public class ShipManager : MonoBehaviour
             else
             {
                 Debug.LogError("No player faction marked in ShipManager! Check your FactionShipData settings.");
+                PlayerFaction = FactionType.None;
             }
 
             // Find and initialize player instance
-            playerInstance = FindObjectOfType<Player>();
+            playerInstance = Object.FindAnyObjectByType<Player>();
             if (playerInstance != null)
             {
                 Debug.Log("Found player instance, setting faction");
