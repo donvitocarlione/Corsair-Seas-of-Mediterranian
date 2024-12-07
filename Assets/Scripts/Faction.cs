@@ -3,11 +3,19 @@ using UnityEngine;
 
 public class Faction : MonoBehaviour
 {
+    public FactionType type;
     public string factionName;
     public int influenceLevel = 0;
     public List<Pirate> members = new List<Pirate>();
     public List<Port> controlledPorts = new List<Port>();
-    public Dictionary<Faction, int> relationships = new Dictionary<Faction, int>();
+
+    void Start()
+    {
+        if (string.IsNullOrEmpty(factionName))
+        {
+            factionName = type.ToString();
+        }
+    }
 
     public void AddMember(Pirate pirate)
     {
@@ -27,19 +35,23 @@ public class Faction : MonoBehaviour
         }
     }
 
-    public void SetRelationship(Faction otherFaction, int value)
+    public int GetRelationshipWith(Faction otherFaction)
     {
-        // Clamp relationship value between -100 and 100
-        value = Mathf.Clamp(value, -100, 100);
-        relationships[otherFaction] = value;
+        return DiplomacySystem.Instance.GetRelationshipValue(type, otherFaction.type);
     }
 
-    public int GetRelationship(Faction otherFaction)
+    public void ModifyRelationshipWith(Faction otherFaction, int change)
     {
-        if (relationships.ContainsKey(otherFaction))
-        {
-            return relationships[otherFaction];
-        }
-        return 0;
+        DiplomacySystem.Instance.ModifyRelationship(type, otherFaction.type, change);
+    }
+
+    public bool IsFriendlyWith(Faction otherFaction)
+    {
+        return DiplomacySystem.Instance.AreFriendly(type, otherFaction.type);
+    }
+
+    public bool IsHostileWith(Faction otherFaction)
+    {
+        return DiplomacySystem.Instance.AreHostile(type, otherFaction.type);
     }
 }
