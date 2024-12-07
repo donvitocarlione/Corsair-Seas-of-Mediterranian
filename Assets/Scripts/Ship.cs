@@ -27,10 +27,22 @@ public class Ship : MonoBehaviour
 
     [Header("References")]
     public Pirate owner;
-    public GameObject selectionIndicator;  // Assign a visual indicator object
+    public GameObject selectionIndicator;  // Optional visual indicator
+    public Material selectedMaterial;      // Material to use when selected
+
+    private ShipSelection shipSelection;   // Reference to the selection component
 
     private void Awake()
     {
+        // Get the ShipSelection component
+        shipSelection = GetComponent<ShipSelection>();
+        if (shipSelection == null)
+        {
+            // Try to add it if missing
+            shipSelection = gameObject.AddComponent<ShipSelection>();
+            Debug.Log($"Added ShipSelection component to {gameObject.name}");
+        }
+
         ResetStats();
     }
 
@@ -98,12 +110,25 @@ public class Ship : MonoBehaviour
         isSelected = false;
         if (selectionIndicator != null)
             selectionIndicator.SetActive(false);
+        if (shipSelection != null)
+            shipSelection.SetSelected(false, selectedMaterial);
     }
 
     public bool Select()
     {
         isSelected = true;
         ShowSelectionIndicator(true);
+        
+        // Use ShipSelection component for material change
+        if (shipSelection != null)
+        {
+            shipSelection.SetSelected(true, selectedMaterial);
+        }
+        else
+        {
+            Debug.LogWarning($"ShipSelection component missing on {gameObject.name}");
+        }
+
         Debug.Log($"{shipName} selected");
         return true;
     }
@@ -112,6 +137,12 @@ public class Ship : MonoBehaviour
     {
         isSelected = false;
         ShowSelectionIndicator(false);
+        
+        // Use ShipSelection component for material change
+        if (shipSelection != null)
+        {
+            shipSelection.SetSelected(false, selectedMaterial);
+        }
     }
 
     private void ShowSelectionIndicator(bool show)
