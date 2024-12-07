@@ -16,6 +16,7 @@ public class ShipMovement : MonoBehaviour
     private Vector3 targetPosition;
     private Vector3 currentVelocity;
     private Quaternion targetRotation;
+    private Vector2 movementInput;
 
     void Start()
     {
@@ -38,6 +39,29 @@ public class ShipMovement : MonoBehaviour
         rb.angularDrag = 2f;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | 
                         RigidbodyConstraints.FreezeRotationZ;
+    }
+
+    public void SetMovementInput(float horizontal, float vertical)
+    {
+        movementInput = new Vector2(horizontal, vertical);
+        
+        if (movementInput.magnitude > 0)
+        {
+            // Convert input to world space movement
+            Vector3 moveDirection = new Vector3(horizontal, 0, vertical).normalized;
+            isMoving = true;
+
+            // Calculate rotation based on input direction
+            float targetAngle = Mathf.Atan2(moveDirection.x, moveDirection.z) * Mathf.Rad2Deg;
+            targetRotation = Quaternion.Euler(0, targetAngle, 0);
+
+            // Set target position some distance ahead in the movement direction
+            targetPosition = transform.position + moveDirection * 10f;
+        }
+        else
+        {
+            ClearTarget();
+        }
     }
 
     public void ApplyNavigationBonus(float bonus)

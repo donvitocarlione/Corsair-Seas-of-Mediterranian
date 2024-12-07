@@ -3,12 +3,16 @@ using UnityEngine;
 public class Player : Pirate
 {
     private Ship selectedShip;
-    private InputManager inputManager;
+    [SerializeField] private InputManager inputManager;
 
     protected override void Start()
     {
         base.Start();
-        inputManager = FindObjectOfType<InputManager>();
+        if (inputManager == null)
+        {
+            inputManager = GameObject.FindFirstObjectByType<InputManager>();
+            Debug.LogWarning("InputManager not assigned in inspector, trying to find in scene.");
+        }
         if (inputManager == null)
         {
             Debug.LogError("InputManager not found in the scene!");
