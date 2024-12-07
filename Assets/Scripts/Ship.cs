@@ -9,10 +9,20 @@ public class Ship : SeaEntityBase
     public bool IsSelected => isSelected;
     public Pirate owner => ownerPirate;  // Property now returns the private field
 
+    protected virtual void Awake()
+    {
+        // Initialize any required components or variables
+        if (string.IsNullOrEmpty(shipName))
+        {
+            shipName = $"Ship_{Random.Range(1000, 9999)}";
+        }
+    }
+
     public void Initialize(FactionType faction, string name)
     {
-        SetFaction(faction);
         shipName = name;
+        SetFaction(faction);
+        Debug.Log($"Initialized ship {shipName} with faction {faction}");
     }
 
     public void Select()
@@ -22,6 +32,7 @@ public class Ship : SeaEntityBase
         if (SelectionManager.Instance != null)
         {
             SelectionManager.Instance.ShowSelectionAt(transform);
+            Debug.Log($"Selected ship {shipName}");
         }
     }
 
@@ -32,6 +43,7 @@ public class Ship : SeaEntityBase
         if (SelectionManager.Instance != null)
         {
             SelectionManager.Instance.HideSelection();
+            Debug.Log($"Deselected ship {shipName}");
         }
     }
 
@@ -47,6 +59,17 @@ public class Ship : SeaEntityBase
         if (ownerPirate != null)
         {
             SetFaction(ownerPirate.Faction);
+            Debug.Log($"Set owner of {shipName} to {ownerPirate.GetType().Name}");
         }
+        else
+        {
+            Debug.Log($"Cleared owner of {shipName}");
+        }
+    }
+
+    protected override void OnFactionChanged()
+    {
+        base.OnFactionChanged();
+        Debug.Log($"Ship {shipName} faction changed to {Faction}");
     }
 }
