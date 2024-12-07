@@ -39,35 +39,9 @@ public class ShipManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            
-            shipsParent = new GameObject("Ships").transform;
-            shipsParent.parent = transform;
-            
-            piratesParent = new GameObject("Pirates").transform;
-            piratesParent.parent = transform;
-
-            var playerFactionData = factionShipData.Find(data => data.isPlayerFaction);
-            if (playerFactionData != null)
-            {
-                PlayerFaction = playerFactionData.faction;
-                Debug.Log($"Player faction set to: {PlayerFaction}");
-            }
-            else
-            {
-                Debug.LogError("No player faction marked in ShipManager!");
-                PlayerFaction = FactionType.None;
-            }
-
-            playerInstance = FindObjectOfType<Player>();
-            if (playerInstance != null)
-            {
-                Debug.Log("Found player instance, setting faction");
-                playerInstance.SetFaction(PlayerFaction);
-            }
-            else
-            {
-                Debug.LogError("No Player component found in the scene!");
-            }
+            DontDestroyOnLoad(gameObject);
+            CreateContainers();
+            SetupPlayerFaction();
         }
         else
         {
@@ -75,8 +49,49 @@ public class ShipManager : MonoBehaviour
         }
     }
 
-    void Start()
+    private void CreateContainers()
     {
+        shipsParent = new GameObject("Ships").transform;
+        shipsParent.parent = transform;
+        
+        piratesParent = new GameObject("Pirates").transform;
+        piratesParent.parent = transform;
+    }
+
+    private void SetupPlayerFaction()
+    {
+        var playerFactionData = factionShipData.Find(data => data.isPlayerFaction);
+        if (playerFactionData != null)
+        {
+            PlayerFaction = playerFactionData.faction;
+            Debug.Log($"Player faction set to: {PlayerFaction}");
+
+            // Find player instance after a short delay to ensure all components are initialized
+            StartCoroutine(SetupPlayerWithDelay());
+        }
+        else
+        {
+            Debug.LogError("No player faction marked in ShipManager!");
+            PlayerFaction = FactionType.None;
+        }
+    }
+
+    private System.Collections.IEnumerator SetupPlayerWithDelay()
+    {
+        yield return new WaitForSeconds(0.1f); // Short delay to ensure everything is initialized
+
+        playerInstance = FindObjectOfType<Player>();
+        if (playerInstance != null)
+        {
+            Debug.Log("Found player instance, setting faction");
+            playerInstance.SetFaction(PlayerFaction);
+        }
+        else
+        {
+            Debug.LogError("No Player component found in the scene!");
+        }
+
+        // Initialize ships after player setup
         InitializeShipsAndPirates();
     }
 
