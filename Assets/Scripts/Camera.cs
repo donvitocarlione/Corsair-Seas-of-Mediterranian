@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class Camera : MonoBehaviour
+public class GameCamera : MonoBehaviour
 {
     [Header("Movement Settings")]
     public float zoomSpeed = 10f;
