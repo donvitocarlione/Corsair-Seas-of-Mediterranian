@@ -5,6 +5,7 @@ public class Ship : MonoBehaviour
     [Header("Ship Info")]
     public string shipName;
     public string shipType;
+    public FactionType faction;
 
     [Header("Crew & Cargo")]
     public int maxCrew = 10;
@@ -50,6 +51,8 @@ public class Ship : MonoBehaviour
     public void SetOwner(Pirate newOwner)
     {
         owner = newOwner;
+        if (owner != null && owner is Player)
+            faction = FactionType.Player;
     }
 
     private void OnMouseDown()
