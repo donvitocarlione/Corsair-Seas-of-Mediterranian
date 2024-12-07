@@ -10,7 +10,7 @@ public class Pirate : MonoBehaviour
     public int gold;
     public Ship selectedShip;
 
-    public virtual void AddShip(Ship ship)  // Added virtual keyword here
+    public virtual void AddShip(Ship ship)
     {
         if (!ships.Contains(ship))
         {
