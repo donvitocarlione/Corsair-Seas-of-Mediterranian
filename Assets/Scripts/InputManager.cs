@@ -12,7 +12,7 @@ public class InputManager : MonoBehaviour
 
     void Start()
     {
-        shipManager = FindObjectOfType<ShipManager>();
+        shipManager = FindFirstObjectByType<ShipManager>();
         mainCamera = Camera.main;
 
         if (mainCamera == null)
