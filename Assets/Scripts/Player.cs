@@ -7,7 +7,7 @@ public class Player : Pirate
 
     protected override void Start()
     {
-        base.Start();
+        // Don't call base.Start() to prevent early faction registration
         if (inputManager == null)
         {
             inputManager = GameObject.FindFirstObjectByType<InputManager>();
