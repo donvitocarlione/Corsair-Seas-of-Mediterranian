@@ -2,47 +2,30 @@ using UnityEngine;
 
 public class Ship : MonoBehaviour
 {
-    [Header("Ship Info")]
     public string shipName;
     public string shipType;
     public FactionType faction;
     public bool isCombatShip;
-    public float shipSize = 0.5f; // 0-1 range, 0 = small, 1 = large
+    public float shipSize = 0.5f;
 
-    [Header("Crew & Cargo")]
     public int maxCrew = 10;
     public int currentCrew;
     public float maxCargo = 100f;
     public float currentCargo;
 
-    [Header("Combat Stats")]
     public float baseAttack = 10f;
     public float baseDefense = 10f;
     public float currentAttack;
     public float currentDefense;
 
-    [Header("Status")]
     public float health = 100f;
     public bool isSelected;
 
-    [Header("References")]
     public Pirate owner;
-    public GameObject selectionIndicator;  // Optional visual indicator
-    public Material selectedMaterial;      // Material to use when selected
-
-    private ShipSelection shipSelection;   // Reference to the selection component
+    public GameObject selectionIndicator;
 
     private void Awake()
     {
-        // Get the ShipSelection component
-        shipSelection = GetComponent<ShipSelection>();
-        if (shipSelection == null)
-        {
-            // Try to add it if missing
-            shipSelection = gameObject.AddComponent<ShipSelection>();
-            Debug.Log($"Added ShipSelection component to {gameObject.name}");
-        }
-
         ResetStats();
     }
 
@@ -55,7 +38,6 @@ public class Ship : MonoBehaviour
         if (selectionIndicator != null)
             selectionIndicator.SetActive(false);
 
-        // Randomize some properties if not set
         if (string.IsNullOrEmpty(shipType))
         {
             RandomizeShipProperties();
@@ -67,7 +49,6 @@ public class Ship : MonoBehaviour
         string[] types = { "Sloop", "Brigantine", "Frigate", "Galleon" };
         shipType = types[Random.Range(0, types.Length)];
         
-        // Set size based on type
         switch (shipType)
         {
             case "Sloop":
@@ -84,13 +65,11 @@ public class Ship : MonoBehaviour
                 break;
         }
 
-        // Adjust stats based on size
         maxCrew = Mathf.RoundToInt(maxCrew * (1f + shipSize));
         maxCargo = maxCargo * (1f + shipSize * 2f);
         baseAttack = baseAttack * (1f + shipSize);
         baseDefense = baseDefense * (1f + shipSize);
         
-        // Random combat designation
         isCombatShip = Random.value > 0.4f;
         if (isCombatShip)
         {
@@ -110,45 +89,21 @@ public class Ship : MonoBehaviour
         isSelected = false;
         if (selectionIndicator != null)
             selectionIndicator.SetActive(false);
-        if (shipSelection != null)
-            shipSelection.SetSelected(false, selectedMaterial);
     }
 
     public bool Select()
     {
         isSelected = true;
-        ShowSelectionIndicator(true);
-        
-        // Use ShipSelection component for material change
-        if (shipSelection != null)
-        {
-            shipSelection.SetSelected(true, selectedMaterial);
-        }
-        else
-        {
-            Debug.LogWarning($"ShipSelection component missing on {gameObject.name}");
-        }
-
-        Debug.Log($"{shipName} selected");
+        if (selectionIndicator != null)
+            selectionIndicator.SetActive(true);
         return true;
     }
 
     public void Deselect()
     {
         isSelected = false;
-        ShowSelectionIndicator(false);
-        
-        // Use ShipSelection component for material change
-        if (shipSelection != null)
-        {
-            shipSelection.SetSelected(false, selectedMaterial);
-        }
-    }
-
-    private void ShowSelectionIndicator(bool show)
-    {
         if (selectionIndicator != null)
-            selectionIndicator.SetActive(show);
+            selectionIndicator.SetActive(false);
     }
 
     public void SetOwner(Pirate newOwner)
@@ -160,10 +115,9 @@ public class Ship : MonoBehaviour
 
         owner = newOwner;
         
-        if (owner != null)
+        if (owner != null && owner is Player)
         {
-            if (owner is Player)
-                faction = FactionType.Player;
+            faction = FactionType.Player;
         }
     }
 
