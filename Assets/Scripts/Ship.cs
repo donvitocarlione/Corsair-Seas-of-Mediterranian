@@ -18,22 +18,50 @@ public class Ship : MonoBehaviour
     {
         // Get or add required components
         shipMovement = GetComponent<ShipMovement>();
-        if (shipMovement == null) shipMovement = gameObject.AddComponent<ShipMovement>();
+        if (shipMovement == null)
+        {
+            shipMovement = gameObject.AddComponent<ShipMovement>();
+            Debug.Log($"Added ShipMovement to {gameObject.name}");
+        }
 
         rb = GetComponent<Rigidbody>();
-        if (rb == null) rb = gameObject.AddComponent<Rigidbody>();
+        if (rb == null)
+        {
+            rb = gameObject.AddComponent<Rigidbody>();
+            Debug.Log($"Added Rigidbody to {gameObject.name}");
+        }
 
         // Configure Rigidbody
         rb.useGravity = false; // Since we're using buoyancy
         rb.mass = 1000f;       // Ships are heavy
-        rb.linearDamping = 1f;          // Water resistance
-        rb.angularDamping = 1f;   // Rotational resistance
+        rb.drag = 1f;          // Water resistance
+        rb.angularDrag = 1f;   // Rotational resistance
+        rb.constraints = RigidbodyConstraints.FreezePositionY; // Keep ships at water level
 
         // Get ship selector if exists
         shipSelector = GetComponent<ShipSelector>();
+        if (shipSelector == null)
+        {
+            shipSelector = gameObject.AddComponent<ShipSelector>();
+            Debug.Log($"Added ShipSelector to {gameObject.name}");
+        }
 
         // Get mesh renderer
         meshRenderer = GetComponent<MeshRenderer>();
+        if (meshRenderer == null)
+        {
+            Debug.LogWarning($"No MeshRenderer found on {gameObject.name}");
+        }
+
+        // Ensure there's a collider for selection
+        Collider collider = GetComponent<Collider>();
+        if (collider == null)
+        {
+            BoxCollider boxCollider = gameObject.AddComponent<BoxCollider>();
+            // Make the collider slightly larger than the mesh for easier selection
+            boxCollider.size = transform.localScale * 1.1f;
+            Debug.Log($"Added BoxCollider to {gameObject.name}");
+        }
     }
 
     public void Initialize(FactionType newFaction, string newName)
@@ -48,6 +76,10 @@ public class Ship : MonoBehaviour
             shipSelector.PlayerFaction = newFaction;
             Debug.Log($"Updated ShipSelector faction to {newFaction}");
         }
+        else
+        {
+            Debug.LogWarning($"No ShipSelector found during initialization of {newName}");
+        }
 
         // Ensure the ship is visible
         if (meshRenderer != null)
@@ -58,12 +90,13 @@ public class Ship : MonoBehaviour
         // Make sure the GameObject is active
         gameObject.SetActive(true);
 
-        // Initialize movement component if needed
+        // Initialize movement component
         if (shipMovement != null)
         {
             shipMovement.enabled = true;
             shipMovement.speed = speed;
             shipMovement.turnSpeed = turnSpeed;
+            Debug.Log($"Initialized ShipMovement for {newName}");
         }
     }
 
@@ -71,7 +104,12 @@ public class Ship : MonoBehaviour
     {
         if (shipMovement != null)
         {
+            Debug.Log($"{shipName} moving to position: {position}");
             shipMovement.SetTargetPosition(position);
+        }
+        else
+        {
+            Debug.LogError($"No ShipMovement component found on {shipName}");
         }
     }
 
@@ -80,12 +118,15 @@ public class Ship : MonoBehaviour
         if (shipMovement != null)
         {
             shipMovement.ClearTarget();
+            Debug.Log($"{shipName} stopped moving");
         }
     }
 
     public void TakeDamage(float damage)
     {
         health -= damage;
+        Debug.Log($"{shipName} took {damage} damage. Health: {health}");
+        
         if (health <= 0)
         {
             Die();
@@ -94,10 +135,19 @@ public class Ship : MonoBehaviour
 
     private void Die()
     {
+        Debug.Log($"{shipName} has been destroyed");
+        
         // Notify ShipManager
-        if (ShipManager.Instance != null)
+        ShipManager shipManager = FindObjectOfType<ShipManager>();
+        if (shipManager != null)
         {
-            ShipManager.Instance.OnShipDestroyed(this);
+            shipManager.OnShipDestroyed(this);
+        }
+
+        // Deselect if selected
+        if (isSelected)
+        {
+            SetSelected(false);
         }
 
         // Destroy the game object
@@ -110,9 +160,19 @@ public class Ship : MonoBehaviour
         if (shipSelector != null)
         {
             if (selected)
+            {
                 shipSelector.Select();
+                Debug.Log($"{shipName} selected");
+            }
             else
+            {
                 shipSelector.Deselect();
+                Debug.Log($"{shipName} deselected");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"Cannot set selection state - no ShipSelector on {shipName}");
         }
     }
 
@@ -121,15 +181,24 @@ public class Ship : MonoBehaviour
         return isSelected;
     }
 
-    // Optionally override some Unity messages to ensure proper behavior
     void OnEnable()
     {
         if (meshRenderer != null) meshRenderer.enabled = true;
+        Debug.Log($"Ship {shipName} enabled");
     }
 
     void Start()
     {
-        // Additional initialization if needed
         Debug.Log($"Ship {shipName} started, faction: {faction}");
+    }
+
+    void OnValidate()
+    {
+        // Update ShipSelector faction when changed in inspector
+        if (shipSelector != null && shipSelector.PlayerFaction != faction)
+        {
+            shipSelector.PlayerFaction = faction;
+            Debug.Log($"Updated ShipSelector faction to match Ship: {faction}");
+        }
     }
 }
