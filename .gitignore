@@ -1,3 +1,15 @@
+# Ignore everything
+/*
+
+# Don't ignore Assets folder and .gitignore
+!/Assets/
+!.gitignore
+
+# But ignore everything in Assets except Scripts
+/Assets/*
+!/Assets/Scripts/
+!/Assets/Scripts.meta
+
 # Unity generated
 [Ll]ibrary/
 [Tt]emp/
@@ -6,9 +18,6 @@
 [Bb]uilds/
 [Ll]ogs/
 [Uu]ser[Ss]ettings/
-
-# Never ignore Asset meta data
-!/[Aa]ssets/**/*.meta
 
 # Visual Studio / MonoDevelop generated
 .vs/
