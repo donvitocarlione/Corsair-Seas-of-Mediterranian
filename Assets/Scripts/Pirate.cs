@@ -1,54 +1,76 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class Pirate : MonoBehaviour
+public class Pirate : SeaEntityBase
 {
-    protected List<Ship> ships = new List<Ship>();
-    protected FactionType faction;
-
-    public virtual void SetFaction(FactionType newFaction)
+    protected List<Ship> ownedShips = new List<Ship>();
+    public float reputation = 50f;
+    public float wealth = 1000f;
+    
+    protected virtual void Start()
     {
-        faction = newFaction;
-        // Update faction for all ships
-        foreach (Ship ship in ships)
-        {
-            if (ship != null)
-            {
-                ship.faction = newFaction;
-            }
-        }
+        // Register with FactionManager
+        FactionManager.Instance.RegisterPirate(this);
     }
 
+    protected virtual void OnDestroy()
+    {
+        // Unregister from FactionManager
+        if (FactionManager.Instance != null)
+        {
+            FactionManager.Instance.UnregisterPirate(this);
+        }
+    }
+    
     public virtual void AddShip(Ship ship)
     {
-        if (ship != null)
+        if (!ownedShips.Contains(ship))
         {
-            ships.Add(ship);
+            ownedShips.Add(ship);
             ship.SetOwner(this);
-            ship.faction = faction;
         }
     }
 
     public virtual void RemoveShip(Ship ship)
     {
-        if (ships.Contains(ship))
+        if (ownedShips.Contains(ship))
         {
-            ships.Remove(ship);
+            ownedShips.Remove(ship);
+            if (ship.owner == this)
+            {
+                ship.SetOwner(null);
+            }
         }
     }
 
     public virtual void SelectShip(Ship ship)
     {
-        // Base implementation does nothing
+        // Base implementation - can be overridden by Player
+        if (ownedShips.Contains(ship))
+        {
+            foreach (var ownedShip in ownedShips)
+            {
+                if (ownedShip != ship && ownedShip.IsSelected)
+                {
+                    ownedShip.Deselect();
+                }
+            }
+            ship.Select();
+        }
     }
 
-    public virtual List<Ship> GetShips()
+    public List<Ship> GetOwnedShips()
     {
-        return ships;
+        return new List<Ship>(ownedShips);
     }
 
-    public FactionType GetFaction()
+    protected override void OnFactionChanged()
     {
-        return faction;
+        base.OnFactionChanged();
+        // Update faction for all owned ships
+        foreach (var ship in ownedShips)
+        {
+            ship.SetFaction(Faction);
+        }
     }
 }

@@ -1,59 +1,64 @@
 using UnityEngine;
-using System.Collections.Generic;
 
 public class Player : Pirate
 {
-    public string pirateName;
-    public Ship selectedShip;
+    private Ship selectedShip;
+    private InputManager inputManager;
 
-    void Start()
+    protected override void Start()
     {
-        // Make sure the player's faction is set from ShipManager
-        if (ShipManager.Instance != null)
+        base.Start();
+        inputManager = FindObjectOfType<InputManager>();
+        if (inputManager == null)
         {
-            SetFaction(ShipManager.Instance.PlayerFaction);
-        }
-    }
-
-    public override void SetFaction(FactionType newFaction)
-    {
-        base.SetFaction(newFaction);
-        Debug.Log($"Player faction set to: {newFaction}");
-    }
-
-    public override void AddShip(Ship ship)
-    {
-        if (ship != null)
-        {
-            base.AddShip(ship);
-            Debug.Log($"Added ship {ship.shipName} to player's fleet. Current ship count: {ships.Count}");
-        }
-    }
-
-    public override void RemoveShip(Ship ship)
-    {
-        base.RemoveShip(ship);
-        if (selectedShip == ship)
-        {
-            selectedShip = null;
+            Debug.LogError("InputManager not found in the scene!");
         }
     }
 
     public override void SelectShip(Ship ship)
     {
-        if (ships.Contains(ship))
+        if (!ownedShips.Contains(ship))
         {
-            if (selectedShip != null)
-            {
-                selectedShip.Deselect();
-            }
-            selectedShip = ship;
-            selectedShip.Select();
+            Debug.LogWarning("Attempting to select a ship not owned by the player");
+            return;
+        }
+
+        if (selectedShip != null)
+        {
+            selectedShip.Deselect();
+        }
+
+        selectedShip = ship;
+        ship.Select();
+
+        // Notify input manager of selection change
+        if (inputManager != null)
+        {
+            inputManager.OnShipSelected(ship);
         }
     }
 
-    public override List<Ship> GetShips()
+    public Ship GetSelectedShip()
     {
-        return ships;
+        return selectedShip;
+    }
+
+    public override void AddShip(Ship ship)
+    {
+        base.AddShip(ship);
+        // Additional player-specific logic can be added here
+    }
+
+    public override void RemoveShip(Ship ship)
+    {
+        if (ship == selectedShip)
+        {
+            selectedShip = null;
+            if (inputManager != null)
+            {
+                inputManager.OnShipSelected(null);
+            }
+        }
+        base.RemoveShip(ship);
     }
 }
