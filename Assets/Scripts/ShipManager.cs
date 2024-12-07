@@ -1,142 +1,192 @@
 using UnityEngine;
 using System.Collections.Generic;
 
+[System.Serializable]
+public class FactionShipData
+{
+    public FactionType faction;
+    public List<GameObject> shipPrefabs;  // Different ship types for this faction
+    public Vector3 spawnArea;             // Center point of spawn area for this faction
+    public float spawnRadius = 100f;      // Radius around spawn point where ships can appear
+    public int initialShipCount = 3;      // How many ships this faction starts with
+}
+
 public class ShipManager : MonoBehaviour
 {
+    public static ShipManager Instance { get; private set; }
+
+    [Header("References")]
     public FactionManager factionManager;
-    public List<Ship> ships = new List<Ship>();
-    public string pirateNamePrefix = "Pirate ";
-    public List<GameObject> shipPrefabs; // List of ship prefabs to instantiate
-    public List<FactionType> factions; // List of factions to assign to ships
-    public List<Vector3> spawnPositions; // List of spawn positions
-    private List<Pirate> pirates = new List<Pirate>(); // List to manage pirates
+
+    [Header("Faction Ship Settings")]
+    public List<FactionShipData> factionShipData;
+    public GameObject playerShipPrefab;   // Default player ship
+
+    [Header("Spawn Settings")]
+    public float minSpawnDistance = 50f;  // Minimum distance between spawned ships
+    public float safeSpawnAttempts = 10;  // How many times to try finding a safe spawn point
+
+    private Dictionary<FactionType, List<Ship>> activeShips = new Dictionary<FactionType, List<Ship>>();
+    private List<Vector3> occupiedPositions = new List<Vector3>();
+
+    void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
 
     void Start()
     {
-        Debug.Log("Starting ShipManager"); // Added log
-        Debug.Log("shipPrefabs: " + (shipPrefabs != null ? shipPrefabs.Count : "null")); // Added log
-        Debug.Log("factions: " + (factions != null ? factions.Count : "null")); // Added log
-        Debug.Log("spawnPositions: " + (spawnPositions != null ? spawnPositions.Count : "null")); // Added log
-        InitializeShips();
-        AssignFactionsAndPirates();
+        InitializeShipsForAllFactions();
     }
 
-    private void InitializeShips()
+    public void InitializeShipsForAllFactions()
     {
-        Debug.Log("Initializing Ships"); // Added log
-        if (shipPrefabs == null || factions == null || spawnPositions == null)
+        Debug.Log("Initializing ships for all factions");
+        
+        foreach (var data in factionShipData)
         {
-            Debug.LogError("shipPrefabs, factions, or spawnPositions are not assigned in ShipManager!");
-            return;
+            if (!activeShips.ContainsKey(data.faction))
+            {
+                activeShips[data.faction] = new List<Ship>();
+            }
+
+            for (int i = 0; i < data.initialShipCount; i++)
+            {
+                SpawnShipForFaction(data.faction);
+            }
+        }
+    }
+
+    public Ship SpawnPlayerShip(FactionType playerFaction, Vector3 spawnPosition)
+    {
+        if (playerShipPrefab == null)
+        {
+            Debug.LogError("Player ship prefab not assigned!");
+            return null;
         }
 
-        Debug.Log($"Number of ship prefabs: {shipPrefabs.Count}"); // Added log
-        Debug.Log($"Number of factions: {factions.Count}"); // Added log
-        Debug.Log($"Number of spawn positions: {spawnPositions.Count}"); // Added log
-
-        for (int i = 0; i < shipPrefabs.Count; i++)
+        GameObject shipObj = Instantiate(playerShipPrefab, spawnPosition, Quaternion.identity);
+        Ship ship = shipObj.GetComponent<Ship>();
+        
+        if (ship != null)
         {
-            if (i < spawnPositions.Count && i < factions.Count) // Added check for factions.Count
+            ship.Initialize(playerFaction, "Player Ship");
+            RegisterShip(playerFaction, ship);
+            return ship;
+        }
+        
+        Debug.LogError("Ship component not found on player ship prefab!");
+        return null;
+    }
+
+    public Ship SpawnShipForFaction(FactionType faction)
+    {
+        FactionShipData data = GetFactionShipData(faction);
+        if (data == null || data.shipPrefabs == null || data.shipPrefabs.Count == 0)
+        {
+            Debug.LogError($"No ship prefabs found for faction {faction}");
+            return null;
+        }
+
+        // Get a random ship prefab for this faction
+        GameObject shipPrefab = data.shipPrefabs[Random.Range(0, data.shipPrefabs.Count)];
+        
+        // Find a safe spawn position
+        Vector3 spawnPos = GetSafeSpawnPosition(data.spawnArea, data.spawnRadius);
+        
+        // Spawn the ship
+        GameObject shipObj = Instantiate(shipPrefab, spawnPos, Quaternion.identity);
+        Ship ship = shipObj.GetComponent<Ship>();
+        
+        if (ship != null)
+        {
+            ship.Initialize(faction, $"{faction} Ship {activeShips[faction].Count + 1}");
+            RegisterShip(faction, ship);
+            occupiedPositions.Add(spawnPos);
+            return ship;
+        }
+        
+        Debug.LogError("Ship component not found on prefab!");
+        Destroy(shipObj);
+        return null;
+    }
+
+    private void RegisterShip(FactionType faction, Ship ship)
+    {
+        if (!activeShips.ContainsKey(faction))
+        {
+            activeShips[faction] = new List<Ship>();
+        }
+        
+        activeShips[faction].Add(ship);
+        factionManager.RegisterShip(faction, ship);
+    }
+
+    private Vector3 GetSafeSpawnPosition(Vector3 centerPoint, float radius)
+    {
+        for (int i = 0; i < safeSpawnAttempts; i++)
+        {
+            Vector3 randomPos = centerPoint + Random.insideUnitSphere * radius;
+            randomPos.y = 0; // Keep ships at water level
+
+            bool positionIsSafe = true;
+            foreach (Vector3 occupied in occupiedPositions)
             {
-                Debug.Log($"Spawning ship {i + 1} at position: {spawnPositions[i]}"); // Added log
-                GameObject shipObject = Instantiate(shipPrefabs[i], spawnPositions[i], Quaternion.identity);
-                Ship ship = shipObject.GetComponent<Ship>();
-                if (ship != null)
+                if (Vector3.Distance(randomPos, occupied) < minSpawnDistance)
                 {
-                    ship.Initialize(factions[i % factions.Count], "Ship " + (i + 1));
-                    ships.Add(ship);
-                }
-                else
-                {
-                    Debug.LogError("Ship component not found on ship prefab!");
-                    Destroy(shipObject);
+                    positionIsSafe = false;
+                    break;
                 }
             }
-            else
+
+            if (positionIsSafe)
             {
-                Debug.LogWarning($"Not enough spawn positions or factions provided for ship prefab at index {i}");
+                return randomPos;
             }
+        }
+
+        // If we couldn't find a safe position, just return a random one
+        Vector3 fallbackPos = centerPoint + Random.insideUnitSphere * radius;
+        fallbackPos.y = 0;
+        return fallbackPos;
+    }
+
+    private FactionShipData GetFactionShipData(FactionType faction)
+    {
+        return factionShipData.Find(data => data.faction == faction);
+    }
+
+    public List<Ship> GetFactionShips(FactionType faction)
+    {
+        if (activeShips.TryGetValue(faction, out List<Ship> ships))
+        {
+            return ships;
+        }
+        return new List<Ship>();
+    }
+
+    public void RemoveShip(FactionType faction, Ship ship)
+    {
+        if (activeShips.ContainsKey(faction))
+        {
+            activeShips[faction].Remove(ship);
+            occupiedPositions.Remove(ship.transform.position);
         }
     }
 
-    private void AssignFactionsAndPirates()
+    // Call this when a ship is destroyed
+    public void OnShipDestroyed(Ship ship)
     {
-        Debug.Log("Assigning Factions and Pirates"); // Added log
-        Debug.Log("factionManager: " + factionManager); // Check if factionManager is null
-        if (factionManager == null) {
-            Debug.LogError("factionManager is null in AssignFactionsAndPirates!");
-            return; // Exit early to prevent further errors
-        }
-
-        Debug.Log("Number of ships: " + ships.Count); // Check ship count
-
-        if (ships.Count == 0)
-        {
-            Debug.LogError("ships list is empty in AssignFactionsAndPirates!");
-            return; // Exit early
-        }
-
-        List<FactionType> factionsWithShips = new List<FactionType>();
-
-        foreach (var ship in ships)
-        {
-            if (ship == null) {
-                Debug.LogError("Null ship encountered in ships list!");
-                continue; // Skip to the next ship if there are nulls in the list, avoiding the exception
-            }
-
-            if (ship.faction == null) {
-                Debug.LogError("ship.faction is null for ship: " + ship.name);
-                continue; // Skip if faction is null
-            }
-
-            if (ship.transform == null) {
-                Debug.LogError("ship.transform is null for ship: " + ship.name);
-                continue; // Skip if transform is null
-            }
-
-            FactionType factionToAssign = AssignFaction(factionsWithShips);
-            ship.faction = factionToAssign;
-            try {
-                factionManager.RegisterShip(factionToAssign, ship); // Handle potential exceptions here
-            } catch (System.Exception e) {
-                Debug.LogError("Error during factionManager.RegisterShip: " + e.Message);
-                // Consider what should happen if this fails. Should the ship be removed from the list or reassigned?
-            }
-            factionsWithShips.Add(factionToAssign);
-            CreatePirate(factionToAssign, ship.transform.position);
-        }
-    }
-
-    // Helper function
-    private FactionType AssignFaction(List<FactionType> factionsWithShips)
-    {
-        List<FactionType> availableFactions = new List<FactionType>();
-        foreach (FactionType ft in System.Enum.GetValues(typeof(FactionType)))
-        {
-            if (!factionsWithShips.Contains(ft))
-            {
-                availableFactions.Add(ft);
-            }
-        }
-
-        if (availableFactions.Count > 0)
-            return availableFactions[Random.Range(0, availableFactions.Count)];
-        else // If we run out of factions, assign to a random one
-            return (FactionType)Random.Range(0, System.Enum.GetValues(typeof(FactionType)).Length);
-    }
-
-    private void CreatePirate(FactionType faction, Vector3 position)
-    {
-        string pirateName = pirateNamePrefix + Random.Range(1, 1000);
-        Pirate pirate = new Pirate(faction, pirateName, 100, 1.5f);
-        Debug.Log($"Created pirate: {pirate.name} for faction {pirate.faction}");
-
-        // Instantiate a pirate GameObject
-        GameObject pirateObject = new GameObject(pirateName);
-        pirateObject.transform.position = position;
-        PirateController pirateController = pirateObject.AddComponent<PirateController>();
-        pirateController.Initialize(pirate);
-        pirates.Add(pirate); // Add pirate to the list
+        RemoveShip(ship.faction, ship);
+        // You might want to spawn a replacement ship after some delay
+        // StartCoroutine(SpawnReplacementShipAfterDelay(ship.faction));
     }
 }
