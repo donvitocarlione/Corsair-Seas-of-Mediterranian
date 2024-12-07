@@ -7,14 +7,22 @@ public class ShipSelection : MonoBehaviour
 
     void Awake()
     {
+        // Try to find renderer on this object
         shipRenderer = GetComponent<Renderer>();
+
+        // If not found, look for renderers in children
+        if (shipRenderer == null)
+        {
+            shipRenderer = GetComponentInChildren<Renderer>();
+        }
+
         if (shipRenderer != null)
         {
             originalMaterial = shipRenderer.material;
         }
         else
         {
-            Debug.LogWarning($"No Renderer found on {gameObject.name}");
+            Debug.LogWarning($"No Renderer found on {gameObject.name} or its children. Please add a Mesh Renderer component.");
         }
     }
 
@@ -22,7 +30,7 @@ public class ShipSelection : MonoBehaviour
     {
         if (shipRenderer == null)
         {
-            Debug.LogWarning($"No Renderer on {gameObject.name}");
+            Debug.LogWarning($"No Renderer available on {gameObject.name} or its children");
             return;
         }
 
@@ -30,11 +38,27 @@ public class ShipSelection : MonoBehaviour
         {
             shipRenderer.material = selectedMaterial;
         }
-        else
+        else if (originalMaterial != null)
         {
             shipRenderer.material = originalMaterial;
         }
 
         Debug.Log($"Set selection state for {gameObject.name}: {selected}");
+    }
+
+    private void OnDestroy()
+    {
+        // Clean up material references
+        if (originalMaterial != null)
+        {
+            if (Application.isPlaying)
+            {
+                Destroy(originalMaterial);
+            }
+            else
+            {
+                DestroyImmediate(originalMaterial);
+            }
+        }
     }
 }
