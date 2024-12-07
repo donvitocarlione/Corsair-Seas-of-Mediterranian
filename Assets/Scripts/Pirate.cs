@@ -80,5 +80,12 @@ public class Pirate : SeaEntityBase
         {
             ship.SetFaction(Faction);
         }
+
+        // Re-register with new faction
+        var factionData = FactionManager.Instance.GetFactionData(Faction);
+        if (factionData != null && !factionData.pirates.Contains(this))
+        {
+            factionData.pirates.Add(this);
+        }
     }
 }
