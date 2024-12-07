@@ -31,28 +31,51 @@ public class ShipManager : MonoBehaviour
 
     void Awake()
     {
+        Debug.Log("ShipManager Awake");
         if (Instance == null)
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            Debug.Log("ShipManager instance created");
         }
         else
         {
+            Debug.Log("Duplicate ShipManager found, destroying");
             Destroy(gameObject);
         }
     }
 
     void Start()
     {
+        Debug.Log("ShipManager Start");
+        if (factionManager == null)
+        {
+            Debug.LogError("FactionManager reference is missing!");
+            return;
+        }
+
+        if (factionShipData == null || factionShipData.Count == 0)
+        {
+            Debug.LogError("No faction ship data configured!");
+            return;
+        }
+
+        Debug.Log($"Found {factionShipData.Count} faction configurations");
+        foreach (var data in factionShipData)
+        {
+            Debug.Log($"Faction: {data.faction}, Ship Prefabs: {(data.shipPrefabs != null ? data.shipPrefabs.Count : 0)}, Initial Count: {data.initialShipCount}");
+        }
+
         InitializeShipsForAllFactions();
     }
 
     public void InitializeShipsForAllFactions()
     {
-        Debug.Log("Initializing ships for all factions");
+        Debug.Log("Starting InitializeShipsForAllFactions");
         
         foreach (var data in factionShipData)
         {
+            Debug.Log($"Processing faction: {data.faction}");
             if (!activeShips.ContainsKey(data.faction))
             {
                 activeShips[data.faction] = new List<Ship>();
@@ -60,49 +83,40 @@ public class ShipManager : MonoBehaviour
 
             for (int i = 0; i < data.initialShipCount; i++)
             {
-                SpawnShipForFaction(data.faction);
+                Debug.Log($"Attempting to spawn ship {i + 1} for {data.faction}");
+                Ship newShip = SpawnShipForFaction(data.faction);
+                if (newShip != null)
+                {
+                    Debug.Log($"Successfully spawned ship {i + 1} for {data.faction}");
+                }
+                else
+                {
+                    Debug.LogError($"Failed to spawn ship {i + 1} for {data.faction}");
+                }
             }
         }
     }
 
-    public Ship SpawnPlayerShip(FactionType playerFaction, Vector3 spawnPosition)
-    {
-        if (playerShipPrefab == null)
-        {
-            Debug.LogError("Player ship prefab not assigned!");
-            return null;
-        }
-
-        GameObject shipObj = Instantiate(playerShipPrefab, spawnPosition, Quaternion.identity);
-        Ship ship = shipObj.GetComponent<Ship>();
-        
-        if (ship != null)
-        {
-            ship.Initialize(playerFaction, "Player Ship");
-            RegisterShip(playerFaction, ship);
-            return ship;
-        }
-        
-        Debug.LogError("Ship component not found on player ship prefab!");
-        return null;
-    }
-
     public Ship SpawnShipForFaction(FactionType faction)
     {
+        Debug.Log($"SpawnShipForFaction called for {faction}");
         FactionShipData data = GetFactionShipData(faction);
-        if (data == null || data.shipPrefabs == null || data.shipPrefabs.Count == 0)
+        if (data == null)
         {
-            Debug.LogError($"No ship prefabs found for faction {faction}");
+            Debug.LogError($"No FactionShipData found for faction {faction}");
             return null;
         }
 
-        // Get a random ship prefab for this faction
+        if (data.shipPrefabs == null || data.shipPrefabs.Count == 0)
+        {
+            Debug.LogError($"No ship prefabs assigned for faction {faction}");
+            return null;
+        }
+
         GameObject shipPrefab = data.shipPrefabs[Random.Range(0, data.shipPrefabs.Count)];
-        
-        // Find a safe spawn position
         Vector3 spawnPos = GetSafeSpawnPosition(data.spawnArea, data.spawnRadius);
         
-        // Spawn the ship
+        Debug.Log($"Spawning ship for {faction} at position {spawnPos}");
         GameObject shipObj = Instantiate(shipPrefab, spawnPos, Quaternion.identity);
         Ship ship = shipObj.GetComponent<Ship>();
         
@@ -114,7 +128,7 @@ public class ShipManager : MonoBehaviour
             return ship;
         }
         
-        Debug.LogError("Ship component not found on prefab!");
+        Debug.LogError($"Ship component not found on prefab for faction {faction}");
         Destroy(shipObj);
         return null;
     }
@@ -128,6 +142,7 @@ public class ShipManager : MonoBehaviour
         
         activeShips[faction].Add(ship);
         factionManager.RegisterShip(faction, ship);
+        Debug.Log($"Registered ship for faction {faction}. Total ships: {activeShips[faction].Count}");
     }
 
     private Vector3 GetSafeSpawnPosition(Vector3 centerPoint, float radius)
@@ -153,7 +168,6 @@ public class ShipManager : MonoBehaviour
             }
         }
 
-        // If we couldn't find a safe position, just return a random one
         Vector3 fallbackPos = centerPoint + Random.insideUnitSphere * radius;
         fallbackPos.y = 0;
         return fallbackPos;
@@ -179,14 +193,13 @@ public class ShipManager : MonoBehaviour
         {
             activeShips[faction].Remove(ship);
             occupiedPositions.Remove(ship.transform.position);
+            Debug.Log($"Removed ship from faction {faction}");
         }
     }
 
-    // Call this when a ship is destroyed
     public void OnShipDestroyed(Ship ship)
     {
         RemoveShip(ship.faction, ship);
-        // You might want to spawn a replacement ship after some delay
-        // StartCoroutine(SpawnReplacementShipAfterDelay(ship.faction));
+        Debug.Log($"Ship destroyed for faction {ship.faction}");
     }
 }
