@@ -11,9 +11,12 @@ public class Pirate : SeaEntityBase
     {
         // Register with FactionManager's faction data
         var factionData = FactionManager.Instance.GetFactionData(Faction);
-        if (factionData != null && !factionData.pirates.Contains(this))
+        if (factionData != null)
         {
-            factionData.pirates.Add(this);
+            if (!factionData.pirates.Contains(this))
+            {
+                factionData.pirates.Add(this);
+            }
         }
     }
 
