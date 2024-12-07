@@ -2,143 +2,50 @@ using UnityEngine;
 
 public class InputManager : MonoBehaviour
 {
-    private Ship currentlySelectedShip;
-    private ShipManager shipManager;
+    private Ship selectedShip;
     private Camera mainCamera;
 
-    [Header("Selection Settings")]
-    public LayerMask selectionMask = -1; // Default to everything
-    public float maxSelectionDistance = 1000f;
-    public FactionType playerFaction = FactionType.Player; // Set this in inspector or via code
-
-    void Start()
+    private void Start()
     {
-        shipManager = FindFirstObjectByType<ShipManager>();
         mainCamera = Camera.main;
-
         if (mainCamera == null)
+        {
             Debug.LogError("Main camera not found!");
-
-        if (shipManager == null)
-            Debug.LogError("ShipManager not found!");
-    }
-
-    void Update()
-    {
-        HandleMouseInput();
-    }
-
-    void HandleMouseInput()
-    {
-        // Left click for selection
-        if (Input.GetMouseButtonDown(0))
-        {
-            HandleSelection();
-        }
-
-        // Right click for movement/action
-        if (Input.GetMouseButtonDown(1) && currentlySelectedShip != null)
-        {
-            HandleAction();
         }
     }
 
-    void HandleSelection()
+    public void OnShipSelected(Ship ship)
     {
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-
-        Debug.DrawRay(ray.origin, ray.direction * maxSelectionDistance, Color.red, 1f);
-
-        if (Physics.Raycast(ray, out hit, maxSelectionDistance, selectionMask))
-        {
-            Debug.Log($"Hit object: {hit.collider.gameObject.name}");
-
-            Ship newSelection = hit.collider.GetComponent<Ship>();
-            if (newSelection != null)
-            {
-                // Check if the ship belongs to the player faction
-                if (newSelection.faction == playerFaction)
-                {
-                    // Deselect previous ship
-                    if (currentlySelectedShip != null)
-                    {
-                        currentlySelectedShip.Deselect();
-                    }
-
-                    // Select new ship
-                    currentlySelectedShip = newSelection;
-                    currentlySelectedShip.Select();
-                    Debug.Log($"Selected ship: {hit.collider.gameObject.name}");
-                }
-                else
-                {
-                    Debug.Log($"Ship {hit.collider.gameObject.name} belongs to {newSelection.faction} faction");
-                }
-            }
-            else
-            {
-                // Clicked something else, deselect current ship
-                if (currentlySelectedShip != null)
-                {
-                    currentlySelectedShip.Deselect();
-                    currentlySelectedShip = null;
-                    Debug.Log("Deselected current ship");
-                }
-            }
-        }
-        else
-        {
-            Debug.Log("No object hit");
-            // Clicked nothing, deselect current ship
-            if (currentlySelectedShip != null)
-            {
-                currentlySelectedShip.Deselect();
-                currentlySelectedShip = null;
-                Debug.Log("Deselected current ship");
-            }
-        }
+        selectedShip = ship;
+        // Add any additional input handling for selected ship
     }
 
-    void HandleAction()
+    private void Update()
     {
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-
-        if (Physics.Raycast(ray, out hit, maxSelectionDistance, selectionMask))
-        {
-            // Check if clicking on another ship (for potential combat/interaction)
-            Ship targetShip = hit.collider.GetComponent<Ship>();
-            if (targetShip != null)
-            {
-                // Handle ship-to-ship interaction here
-                Vector3 directionToTarget = (targetShip.transform.position - currentlySelectedShip.transform.position).normalized;
-                Vector3 stopPosition = targetShip.transform.position - directionToTarget * 5f; // Stop 5 units away
-                MoveSelectedShip(stopPosition);
-                Debug.Log($"Moving to interact with ship: {targetShip.gameObject.name}");
-            }
-            else
-            {
-                // Move to clicked position
-                MoveSelectedShip(hit.point);
-                Debug.Log($"Moving to position: {hit.point}");
-            }
-        }
+        HandleShipMovement();
     }
 
-    void MoveSelectedShip(Vector3 targetPosition)
+    private void HandleShipMovement()
     {
-        if (currentlySelectedShip != null)
+        if (selectedShip == null) return;
+
+        // Example movement controls
+        float horizontal = Input.GetAxis("Horizontal");
+        float vertical = Input.GetAxis("Vertical");
+
+        if (horizontal != 0 || vertical != 0)
         {
-            ShipMovement movement = currentlySelectedShip.GetComponent<ShipMovement>();
+            // Get ship movement component and apply movement
+            var movement = selectedShip.GetComponent<ShipMovement>();
             if (movement != null)
             {
-                movement.SetTargetPosition(targetPosition);
-            }
-            else
-            {
-                Debug.LogWarning("Selected ship has no ShipMovement component");
+                movement.SetMovementInput(horizontal, vertical);
             }
         }
+    }
+
+    public Ship GetSelectedShip()
+    {
+        return selectedShip;
     }
 }

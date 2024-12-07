@@ -1,10 +1,10 @@
 using UnityEngine;
 
-public class Ship : MonoBehaviour
+[RequireComponent(typeof(ShipSelectionHandler))]
+public class Ship : SeaEntityBase, ISelectable
 {
     public string shipName;
     public string shipType;
-    public FactionType faction;
     public bool isCombatShip;
     public float shipSize = 0.5f;
 
@@ -19,24 +19,24 @@ public class Ship : MonoBehaviour
     public float currentDefense;
 
     public float health = 100f;
-    public bool isSelected;
+    private bool isSelected;
+    public bool IsSelected => isSelected;
 
     public Pirate owner;
-    public GameObject selectionIndicator;
+    private ShipSelectionHandler selectionHandler;
 
     private void Awake()
     {
+        selectionHandler = GetComponent<ShipSelectionHandler>();
         ResetStats();
     }
 
     public void Initialize(FactionType faction, string shipName)
     {
-        this.faction = faction;
+        SetFaction(faction);
         this.shipName = shipName;
         ResetStats();
         isSelected = false;
-        if (selectionIndicator != null)
-            selectionIndicator.SetActive(false);
 
         if (string.IsNullOrEmpty(shipType))
         {
@@ -87,23 +87,22 @@ public class Ship : MonoBehaviour
         currentAttack = baseAttack;
         currentDefense = baseDefense;
         isSelected = false;
-        if (selectionIndicator != null)
-            selectionIndicator.SetActive(false);
     }
 
     public bool Select()
     {
-        isSelected = true;
-        if (selectionIndicator != null)
-            selectionIndicator.SetActive(true);
-        return true;
+        if (selectionHandler.Select())
+        {
+            isSelected = true;
+            return true;
+        }
+        return false;
     }
 
     public void Deselect()
     {
         isSelected = false;
-        if (selectionIndicator != null)
-            selectionIndicator.SetActive(false);
+        selectionHandler.Deselect();
     }
 
     public void SetOwner(Pirate newOwner)
@@ -117,15 +116,7 @@ public class Ship : MonoBehaviour
         
         if (owner != null && owner is Player)
         {
-            faction = FactionType.Player;
-        }
-    }
-
-    private void OnMouseDown()
-    {
-        if (owner != null && owner is Player)
-        {
-            owner.SelectShip(this);
+            SetFaction(FactionType.Player);
         }
     }
 }
