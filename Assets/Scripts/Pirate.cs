@@ -177,7 +177,7 @@ public class Pirate : SeaEntityBase, IShipOwner
         return new List<Ship>(ownedShips);
     }
 
-    protected virtual void OnFactionChanged(FactionType newFaction)
+    protected new virtual void OnFactionChanged(FactionType newFaction)
     {
         Debug.Log($"{GetType().Name}'s faction changed to {newFaction}");
 
