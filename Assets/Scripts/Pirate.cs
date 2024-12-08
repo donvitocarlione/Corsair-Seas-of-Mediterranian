@@ -123,8 +123,8 @@ public class Pirate : SeaEntityBase, IShipOwner
         {
             ownedShips.Add(ship);
             ship.SetOwner(this);
-            ship.Initialize(Faction, ship.Name); // Ensure ship has same faction
-            Debug.Log($"Added ship {ship.Name} to {GetType().Name}'s fleet");
+            ship.Initialize(Faction, ship.ShipName); // Use ShipName property
+            Debug.Log($"Added ship {ship.ShipName} to {GetType().Name}'s fleet");
         }
     }
 
@@ -139,11 +139,11 @@ public class Pirate : SeaEntityBase, IShipOwner
         if (ownedShips.Contains(ship))
         {
             ownedShips.Remove(ship);
-            if (ship.Owner == this)
+            if (ship.ShipOwner == this)
             {
                 ship.ClearOwner();
             }
-            Debug.Log($"Removed ship {ship.Name} from {GetType().Name}'s fleet");
+            Debug.Log($"Removed ship {ship.ShipName} from {GetType().Name}'s fleet");
         }
     }
 
@@ -184,7 +184,7 @@ public class Pirate : SeaEntityBase, IShipOwner
         {
             if (ship != null)
             {
-                ship.Initialize(newFaction, ship.Name);
+                ship.Initialize(newFaction, ship.ShipName);
             }
         }
     }
