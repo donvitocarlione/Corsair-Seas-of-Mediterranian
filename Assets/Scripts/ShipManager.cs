@@ -124,7 +124,7 @@ public class ShipManager : MonoBehaviour
         }
 
         playerFaction = playerData.faction;
-        playerInstance = FindObjectOfType<Player>();
+        playerInstance = FindAnyObjectByType<Player>();
         
         if (playerInstance == null)
         {
