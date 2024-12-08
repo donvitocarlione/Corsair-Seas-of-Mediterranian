@@ -64,7 +64,7 @@ public class Pirate : SeaEntityBase, IShipOwner
 
     public override void SetFaction(FactionType newFaction)
     {
-        if (!isInitialized || !Equals(newFaction, Faction))
+        if (!isInitialized || !object.Equals(newFaction, Faction))
         {
             if (isInitialized)
             {
