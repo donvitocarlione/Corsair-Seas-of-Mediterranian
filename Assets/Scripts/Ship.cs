@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections;
 using UnityEngine.Events;
 
-public class Ship : MonoBehaviour
+public class Ship : SeaEntityBase
 {
     [Header("Ship Properties")]
     [SerializeField] protected float maxHealth = 100f;
@@ -10,8 +10,6 @@ public class Ship : MonoBehaviour
     [SerializeField] protected GameObject waterSplashPrefab;
     [SerializeField] protected float waterFloodRate = 0.1f;
 
-    protected string shipName;
-    protected FactionType faction;
     protected float currentHealth;
     protected bool isSelected;
     protected bool isSinking;
@@ -23,8 +21,6 @@ public class Ship : MonoBehaviour
 
     public event UnityAction OnShipDestroyed;
 
-    public string Name => shipName;
-    public FactionType Faction => faction;
     public float Health => currentHealth;
     public bool IsSelected => isSelected;
     public bool IsSinking => isSinking;
@@ -38,10 +34,15 @@ public class Ship : MonoBehaviour
         currentHealth = maxHealth;
     }
 
+    protected override void Start()
+    {
+        base.Start();
+    }
+
     public virtual void Initialize(FactionType newFaction, string newName)
     {
-        faction = newFaction;
-        shipName = newName;
+        SetFaction(newFaction);
+        SetName(newName);
     }
 
     public virtual void SetOwner(IShipOwner newOwner)
@@ -107,10 +108,10 @@ public class Ship : MonoBehaviour
             yield return waitForEndOfFrame;
         }
 
-        OnShipDestroyed();
+        HandleShipDestroyed();
     }
 
-    protected virtual void OnShipDestroyed()
+    protected virtual void HandleShipDestroyed()
     {
         if (shipRigidbody != null) shipRigidbody.isKinematic = true;
         
@@ -123,9 +124,15 @@ public class Ship : MonoBehaviour
         ClearOwner();
         
         OnShipDestroyed?.Invoke();
-        Debug.Log($"Ship {shipName} has been destroyed!");
+        Debug.Log($"Ship {Name} has been destroyed!");
         
         ShipManager.Instance?.OnShipDestroyed(this);
+    }
+
+    protected override void OnDestroy()
+    {
+        base.OnDestroy();
+        OnShipDestroyed = null;
     }
 
     protected virtual void OnValidate()
