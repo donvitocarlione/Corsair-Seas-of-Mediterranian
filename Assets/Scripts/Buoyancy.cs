@@ -4,7 +4,7 @@ public class Buoyancy : MonoBehaviour
 {
     [Header("Buoyancy Settings")]
     public float waterDensity = 1000f;
-    public float waterLevelY = 0f;
+    [SerializeField] private float waterLevelY = 0f;
     public float buoyancyForce = 15f;
     public float waterDrag = 2f;
     public float waterAngularDrag = 2f;
@@ -30,6 +30,9 @@ public class Buoyancy : MonoBehaviour
     private float initialDrag;
     private float initialAngularDrag;
     private float timeOffset;
+
+    // Public property to access water level
+    public float WaterLevel => waterLevelY;
     
     void Start()
     {
