@@ -8,8 +8,23 @@ public class ShipSelectionUI : MonoBehaviour
     private Transform shipListContainer;
     [SerializeField]
     private Button shipButtonPrefab;
+    [SerializeField]
+    private Player player;
 
     private List<Button> shipButtons = new List<Button>();
+
+    private void Awake()
+    {
+        // Try to find player if not assigned
+        if (player == null)
+        {
+            player = FindAnyObjectByType<Player>();
+            if (player == null)
+            {
+                Debug.LogError("No Player found in scene! Ship selection will not work.");
+            }
+        }
+    }
 
     public void UpdateShipList(List<Ship> ships)
     {
@@ -49,10 +64,13 @@ public class ShipSelectionUI : MonoBehaviour
 
     private void OnShipButtonClicked(Ship ship)
     {
-        var player = FindObjectOfType<Player>();
         if (player != null)
         {
             player.SelectShip(ship);
+        }
+        else
+        {
+            Debug.LogWarning("Cannot select ship: Player reference is missing!");
         }
     }
 
