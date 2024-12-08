@@ -16,30 +16,42 @@ public class InputManager : MonoBehaviour
 
     public void OnShipSelected(Ship ship)
     {
+        // Deselect previous ship if any
+        if (selectedShip != null)
+        {
+            selectedShip.Deselect();
+        }
+        
         selectedShip = ship;
-        // Add any additional input handling for selected ship
+        if (selectedShip != null)
+        {
+            selectedShip.Select();
+        }
     }
 
     private void Update()
     {
-        HandleShipMovement();
+        HandleMouseInput();
     }
 
-    private void HandleShipMovement()
+    private void HandleMouseInput()
     {
+        // Only handle right-click when we have a selected ship
         if (selectedShip == null) return;
 
-        // Example movement controls
-        float horizontal = Input.GetAxis("Horizontal");
-        float vertical = Input.GetAxis("Vertical");
-
-        if (horizontal != 0 || vertical != 0)
+        if (Input.GetMouseButtonDown(1)) // Right mouse button
         {
-            // Get ship movement component and apply movement
-            var movement = selectedShip.GetComponent<ShipMovement>();
-            if (movement != null)
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+
+            if (Physics.Raycast(ray, out hit))
             {
-                movement.SetMovementInput(horizontal, vertical);
+                // Get ship movement component and set target position
+                var movement = selectedShip.GetComponent<ShipMovement>();
+                if (movement != null)
+                {
+                    movement.SetTargetPosition(hit.point);
+                }
             }
         }
     }
