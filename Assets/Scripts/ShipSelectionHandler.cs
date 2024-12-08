@@ -3,18 +3,26 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public class ShipSelectionHandler : MonoBehaviour
 {
-    [SerializeField]
-    private MeshRenderer[] targetRenderers;
-    [SerializeField]
-    private GameObject selectionIndicator;
+    [SerializeField] private MeshRenderer[] targetRenderers;
+    [SerializeField] private GameObject selectionIndicator;
+    [SerializeField] private LayerMask selectableLayerMask = Physics.DefaultRaycastLayers;
     
     private Material[] originalMaterials;
     private Material selectedMaterial;
     private Ship shipReference;
+    private ShipMovement movementComponent;
     
     private void Awake()
     {
+        // Ensure this object is on the correct layer
+        if (gameObject.layer == 0) // Default layer
+        {
+            Debug.LogWarning($"[ShipSelectionHandler] {gameObject.name} is on Default layer. Consider using a dedicated Ship layer.");
+        }
+
         shipReference = GetComponent<Ship>();
+        movementComponent = GetComponent<ShipMovement>();
+        
         if (shipReference == null)
         {
             Debug.LogError($"[ShipSelectionHandler] No Ship component found on {gameObject.name}");
@@ -24,6 +32,7 @@ public class ShipSelectionHandler : MonoBehaviour
         if (targetRenderers == null || targetRenderers.Length == 0)
         {
             targetRenderers = GetComponentsInChildren<MeshRenderer>();
+            Debug.Log($"[ShipSelectionHandler] Found {targetRenderers.Length} renderers on {gameObject.name}");
         }
 
         originalMaterials = new Material[targetRenderers.Length];
@@ -33,6 +42,13 @@ public class ShipSelectionHandler : MonoBehaviour
             {
                 originalMaterials[i] = targetRenderers[i].material;
             }
+        }
+
+        // Verify collider setup
+        var collider = GetComponent<Collider>();
+        if (collider.isTrigger)
+        {
+            Debug.LogWarning($"[ShipSelectionHandler] Collider on {gameObject.name} is set as trigger. This may interfere with selection.");
         }
     }
 
@@ -77,6 +93,7 @@ public class ShipSelectionHandler : MonoBehaviour
             selectionIndicator.SetActive(true);
         }
 
+        Debug.Log($"[ShipSelectionHandler] Successfully selected {gameObject.name}");
         return true;
     }
 
@@ -94,12 +111,29 @@ public class ShipSelectionHandler : MonoBehaviour
         {
             selectionIndicator.SetActive(false);
         }
+        Debug.Log($"[ShipSelectionHandler] Deselected {gameObject.name}");
     }
 
     private void OnMouseDown()
     {
         Debug.Log($"[ShipSelectionHandler] OnMouseDown triggered on {gameObject.name}");
         
+        // Verify the click is valid using the layer mask
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+        
+        if (!Physics.Raycast(ray, out hit, Mathf.Infinity, selectableLayerMask))
+        {
+            Debug.LogWarning($"[ShipSelectionHandler] Raycast failed - check layer masks on {gameObject.name}");
+            return;
+        }
+
+        if (hit.collider.gameObject != gameObject)
+        {
+            Debug.LogWarning($"[ShipSelectionHandler] Raycast hit different object: {hit.collider.gameObject.name}");
+            return;
+        }
+
         if (shipReference == null)
         {
             Debug.LogError($"[ShipSelectionHandler] OnMouseDown - shipReference is null on {gameObject.name}");
@@ -133,6 +167,15 @@ public class ShipSelectionHandler : MonoBehaviour
                     Destroy(material);
                 }
             }
+        }
+    }
+
+    private void OnValidate()
+    {
+        // Ensure the layer mask is set to something by default
+        if (selectableLayerMask.value == 0)
+        {
+            selectableLayerMask = Physics.DefaultRaycastLayers;
         }
     }
 }

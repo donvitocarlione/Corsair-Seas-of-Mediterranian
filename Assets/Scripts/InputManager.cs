@@ -5,6 +5,9 @@ public class InputManager : MonoBehaviour
     private Ship selectedShip;
     private Camera mainCamera;
 
+    [SerializeField] private LayerMask selectableLayerMask = Physics.DefaultRaycastLayers;
+    [SerializeField] private LayerMask groundLayerMask = Physics.DefaultRaycastLayers;
+
     private void Start()
     {
         mainCamera = Camera.main;
@@ -44,13 +47,14 @@ public class InputManager : MonoBehaviour
             Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
 
-            if (Physics.Raycast(ray, out hit))
+            // Use groundLayerMask for movement target
+            if (Physics.Raycast(ray, out hit, Mathf.Infinity, groundLayerMask))
             {
-                // Get ship movement component and set target position
                 var movement = selectedShip.GetComponent<ShipMovement>();
                 if (movement != null)
                 {
                     movement.SetTargetPosition(hit.point);
+                    Debug.Log($"Setting target position for {selectedShip.name} to {hit.point}");
                 }
             }
         }
@@ -59,5 +63,18 @@ public class InputManager : MonoBehaviour
     public Ship GetSelectedShip()
     {
         return selectedShip;
+    }
+
+    private void OnValidate()
+    {
+        // Ensure the layer masks are set to something by default
+        if (selectableLayerMask.value == 0)
+        {
+            selectableLayerMask = Physics.DefaultRaycastLayers;
+        }
+        if (groundLayerMask.value == 0)
+        {
+            groundLayerMask = Physics.DefaultRaycastLayers;
+        }
     }
 }
