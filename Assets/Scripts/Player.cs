@@ -1,92 +1,122 @@
 using UnityEngine;
 
+[AddComponentMenu("Game/Player")]
 public class Player : Pirate
 {
     private Ship selectedShip;
-    [SerializeField] private InputManager inputManager;
-    [SerializeField] private ShipSelectionUI shipSelectionUI;
+    [SerializeField, Tooltip("Reference to the InputManager component")]
+    private InputManager inputManager;
+    [SerializeField, Tooltip("Reference to the UI component for ship selection")]
+    private ShipSelectionUI shipSelectionUI;
     
     public event System.Action<Ship> OnShipSelected;
     public event System.Action<Ship> OnShipDeselected;
 
+    public Ship SelectedShip => selectedShip;
+
     protected override void Start()
     {
-        // Don't call base.Start() to prevent early faction registration
+        // Initialize ship list
+        ownedShips ??= new List<Ship>();
+
+        // Find InputManager if not assigned
+        InitializeInputManager();
+    }
+
+    private void InitializeInputManager()
+    {
+        if (inputManager != null) return;
+
+        inputManager = GameObject.FindFirstObjectByType<InputManager>();
         if (inputManager == null)
         {
-            inputManager = GameObject.FindFirstObjectByType<InputManager>();
-            Debug.LogWarning("InputManager not assigned in inspector, trying to find in scene.");
+            Debug.LogError("InputManager not found! Player controls will be disabled.");
         }
-        if (inputManager == null)
+        else
         {
-            Debug.LogError("InputManager not found in the scene!");
+            Debug.LogWarning("InputManager was found in scene but not assigned in inspector. Consider assigning it directly.");
         }
     }
 
     public override void SelectShip(Ship ship)
     {
-        if (!ownedShips.Contains(ship))
+        if (ship == null)
         {
-            Debug.LogWarning("Attempting to select a ship not owned by the player");
+            Debug.LogError("Attempting to select a null ship!");
             return;
         }
 
+        if (!ownedShips.Contains(ship))
+        {
+            Debug.LogWarning($"Cannot select ship '{ship.shipName}' - not owned by player");
+            return;
+        }
+
+        // Cache previous selection
         Ship previousShip = selectedShip;
         
+        // Deselect current ship if any
         if (selectedShip != null)
         {
             selectedShip.Deselect();
             OnShipDeselected?.Invoke(selectedShip);
         }
 
+        // Select new ship
         selectedShip = ship;
         ship.Select();
         OnShipSelected?.Invoke(ship);
 
-        // Update UI
-        if (shipSelectionUI != null)
-        {
-            shipSelectionUI.UpdateSelection(ship);
-        }
+        // Update UI if available
+        shipSelectionUI?.UpdateSelection(ship);
 
-        // Notify input manager
-        if (inputManager != null)
-        {
-            inputManager.OnShipSelected(ship);
-        }
-    }
-
-    public Ship GetSelectedShip()
-    {
-        return selectedShip;
+        // Notify input manager if available
+        inputManager?.OnShipSelected(ship);
     }
 
     public override void AddShip(Ship ship)
     {
-        base.AddShip(ship);
-        // Additional player-specific logic can be added here
-        if (shipSelectionUI != null)
+        if (ship == null)
         {
-            shipSelectionUI.UpdateShipList(GetOwnedShips());
+            Debug.LogError("Attempting to add a null ship!");
+            return;
+        }
+
+        base.AddShip(ship);
+        
+        // Update UI if available
+        shipSelectionUI?.UpdateShipList(GetOwnedShips());
+
+        // Auto-select if this is the first ship
+        if (selectedShip == null && ownedShips.Count == 1)
+        {
+            SelectShip(ship);
         }
     }
 
     public override void RemoveShip(Ship ship)
     {
+        if (ship == null)
+        {
+            Debug.LogError("Attempting to remove a null ship!");
+            return;
+        }
+
         if (ship == selectedShip)
         {
             selectedShip = null;
             OnShipDeselected?.Invoke(ship);
-            if (inputManager != null)
-            {
-                inputManager.OnShipSelected(null);
-            }
+            inputManager?.OnShipSelected(null);
         }
+
         base.RemoveShip(ship);
         
-        if (shipSelectionUI != null)
+        shipSelectionUI?.UpdateShipList(GetOwnedShips());
+
+        // Auto-select another ship if available
+        if (selectedShip == null && ownedShips.Count > 0)
         {
-            shipSelectionUI.UpdateShipList(GetOwnedShips());
+            SelectShip(ownedShips[0]);
         }
     }
 
@@ -104,22 +134,37 @@ public class Player : Pirate
     {
         if (ownedShips.Count == 0) return;
         
-        float spacing = 5f; // Distance between ships
-        Vector3 centerPosition = targetPosition;
+        const float horizontalSpacing = 5f;
+        const float verticalSpacing = 5f;
+        const int shipsPerRow = 3;
         
         for (int i = 0; i < ownedShips.Count; i++)
         {
+            Ship ship = ownedShips[i];
+            if (ship == null) continue;
+
+            int row = i / shipsPerRow;
+            int col = i % shipsPerRow;
+
             Vector3 offset = new Vector3(
-                (i % 3) * spacing - spacing,  // Horizontal offset
-                0,
-                (i / 3) * spacing            // Vertical offset
+                col * horizontalSpacing - (horizontalSpacing * (shipsPerRow - 1) / 2f),
+                0f,
+                row * -verticalSpacing
             );
             
-            ShipMovement movement = ownedShips[i].GetComponent<ShipMovement>();
-            if (movement != null)
+            if (ship.TryGetComponent<ShipMovement>(out var movement))
             {
-                movement.SetTargetPosition(centerPosition + offset);
+                movement.SetTargetPosition(targetPosition + offset);
             }
         }
+    }
+    
+    protected override void OnDestroy()
+    {
+        // Clean up event listeners
+        OnShipSelected = null;
+        OnShipDeselected = null;
+
+        base.OnDestroy();
     }
 }
