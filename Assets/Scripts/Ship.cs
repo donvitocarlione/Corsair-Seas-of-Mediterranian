@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using UnityEngine.Events;
+using CSM.Base;
 
 public class Ship : SeaEntityBase
 {
@@ -24,7 +25,8 @@ public class Ship : SeaEntityBase
     public float Health => currentHealth;
     public bool IsSelected => isSelected;
     public bool IsSinking => isSinking;
-    public IShipOwner Owner => owner;
+    public IShipOwner ShipOwner => owner;
+    public string ShipName => Name;
 
     protected virtual void Awake()
     {

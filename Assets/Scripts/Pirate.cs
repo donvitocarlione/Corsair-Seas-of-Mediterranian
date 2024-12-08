@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using CSM.Base;
 
 [AddComponentMenu("Game/Pirate")]
 public class Pirate : SeaEntityBase, IShipOwner
@@ -123,7 +124,7 @@ public class Pirate : SeaEntityBase, IShipOwner
         {
             ownedShips.Add(ship);
             ship.SetOwner(this);
-            ship.Initialize(Faction, ship.ShipName); // Use ShipName property
+            ship.Initialize(Faction, ship.ShipName);
             Debug.Log($"Added ship {ship.ShipName} to {GetType().Name}'s fleet");
         }
     }
@@ -180,7 +181,7 @@ public class Pirate : SeaEntityBase, IShipOwner
         if (ownedShips == null) return;
         
         // Update faction for all owned ships
-        foreach (var ship in ownedShips.ToArray()) // Use ToArray to avoid modification during enumeration
+        foreach (var ship in ownedShips.ToArray())
         {
             if (ship != null)
             {
