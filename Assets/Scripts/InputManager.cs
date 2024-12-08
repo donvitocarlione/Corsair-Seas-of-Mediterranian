@@ -4,9 +4,11 @@ public class InputManager : MonoBehaviour
 {
     private Ship selectedShip;
     private Camera mainCamera;
-
-    [SerializeField] private LayerMask selectableLayerMask = Physics.DefaultRaycastLayers;
-    [SerializeField] private LayerMask groundLayerMask = Physics.DefaultRaycastLayers;
+    
+    [SerializeField]
+    private LayerMask shipLayerMask;
+    [SerializeField]
+    private LayerMask groundLayerMask; // For right-click movement target detection
 
     private void Start()
     {
@@ -14,6 +16,20 @@ public class InputManager : MonoBehaviour
         if (mainCamera == null)
         {
             Debug.LogError("Main camera not found!");
+            return;
+        }
+
+        // Setup default layer masks if not set
+        if (shipLayerMask == 0)
+        {
+            shipLayerMask = LayerMask.GetMask("Ship");
+            Debug.LogWarning("Ship layer mask not set. Defaulting to 'Ship' layer.");
+        }
+
+        if (groundLayerMask == 0)
+        {
+            groundLayerMask = LayerMask.GetMask("Default", "Water"); // Add other ground layers as needed
+            Debug.LogWarning("Ground layer mask not set. Defaulting to 'Default' and 'Water' layers.");
         }
     }
 
@@ -47,14 +63,14 @@ public class InputManager : MonoBehaviour
             Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
 
-            // Use groundLayerMask for movement target
             if (Physics.Raycast(ray, out hit, Mathf.Infinity, groundLayerMask))
             {
+                // Get ship movement component and set target position
                 var movement = selectedShip.GetComponent<ShipMovement>();
                 if (movement != null)
                 {
                     movement.SetTargetPosition(hit.point);
-                    Debug.Log($"Setting target position for {selectedShip.name} to {hit.point}");
+                    Debug.Log($"[InputManager] Moving ship to position: {hit.point}");
                 }
             }
         }
@@ -67,14 +83,14 @@ public class InputManager : MonoBehaviour
 
     private void OnValidate()
     {
-        // Ensure the layer masks are set to something by default
-        if (selectableLayerMask.value == 0)
+        // Help ensure proper layer masks are set in the inspector
+        if (shipLayerMask == 0)
         {
-            selectableLayerMask = Physics.DefaultRaycastLayers;
+            Debug.LogWarning("Ship layer mask not set in InputManager. Please set it in the inspector.");
         }
-        if (groundLayerMask.value == 0)
+        if (groundLayerMask == 0)
         {
-            groundLayerMask = Physics.DefaultRaycastLayers;
+            Debug.LogWarning("Ground layer mask not set in InputManager. Please set it in the inspector.");
         }
     }
 }
