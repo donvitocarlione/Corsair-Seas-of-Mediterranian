@@ -15,34 +15,99 @@ public class ShipSelectionUI : MonoBehaviour
 
     private void Awake()
     {
+        ValidateReferences();
+    }
+
+    private void ValidateReferences()
+    {
+        if (shipListContainer == null)
+        {
+            Debug.LogError($"Ship List Container is not assigned on {gameObject.name}! Assign it in the inspector.");
+        }
+
+        if (shipButtonPrefab == null)
+        {
+            Debug.LogError($"Ship Button Prefab is not assigned on {gameObject.name}! Assign it in the inspector.");
+        }
+        else if (shipButtonPrefab.GetComponentInChildren<Text>() == null)
+        {
+            Debug.LogError($"Ship Button Prefab on {gameObject.name} is missing a Text component in its children!");
+        }
+
         // Try to find player if not assigned
         if (player == null)
         {
             player = FindAnyObjectByType<Player>();
             if (player == null)
             {
-                Debug.LogError("No Player found in scene! Ship selection will not work.");
+                Debug.LogError($"No Player found in scene! Ship selection will not work on {gameObject.name}.");
+            }
+            else
+            {
+                Debug.Log($"Player automatically found for {gameObject.name}. Consider assigning it directly in the inspector.");
             }
         }
     }
 
     public void UpdateShipList(List<Ship> ships)
     {
+        if (!ValidateComponents()) return;
+
         ClearShipButtons();
+
+        if (ships == null)
+        {
+            Debug.LogError("Received null ships list in UpdateShipList!");
+            return;
+        }
 
         foreach (var ship in ships)
         {
-            CreateShipButton(ship);
+            if (ship != null)
+            {
+                CreateShipButton(ship);
+            }
+            else
+            {
+                Debug.LogWarning("Null ship detected in ships list!");
+            }
         }
+    }
+
+    private bool ValidateComponents()
+    {
+        if (shipButtonPrefab == null)
+        {
+            Debug.LogError($"Cannot update ship list: Ship Button Prefab is not assigned on {gameObject.name}!");
+            return false;
+        }
+
+        if (shipListContainer == null)
+        {
+            Debug.LogError($"Cannot update ship list: Ship List Container is not assigned on {gameObject.name}!");
+            return false;
+        }
+
+        return true;
     }
 
     private void CreateShipButton(Ship ship)
     {
+        if (ship == null)
+        {
+            Debug.LogError("Attempting to create button for null ship!");
+            return;
+        }
+
         var button = Instantiate(shipButtonPrefab, shipListContainer);
         var text = button.GetComponentInChildren<Text>();
         if (text != null)
         {
             text.text = ship.Name;
+        }
+        else
+        {
+            Debug.LogError($"No Text component found in instantiated button for ship {ship.Name}!");
         }
 
         button.onClick.AddListener(() => OnShipButtonClicked(ship));
@@ -76,8 +141,16 @@ public class ShipSelectionUI : MonoBehaviour
 
     public void UpdateSelection(Ship selectedShip)
     {
+        if (selectedShip == null)
+        {
+            Debug.LogWarning("UpdateSelection called with null ship!");
+            return;
+        }
+
         foreach (var button in shipButtons)
         {
+            if (button == null) continue;
+
             var text = button.GetComponentInChildren<Text>();
             if (text != null && text.text == selectedShip.Name)
             {
