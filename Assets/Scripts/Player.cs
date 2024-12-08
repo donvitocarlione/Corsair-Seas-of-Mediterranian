@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 [AddComponentMenu("Game/Player")]
 public class Player : Pirate
@@ -48,7 +49,7 @@ public class Player : Pirate
 
         if (!ownedShips.Contains(ship))
         {
-            Debug.LogWarning($"Cannot select ship '{ship.shipName}' - not owned by player");
+            Debug.LogWarning($"Cannot select ship '{ship.ShipName}' - not owned by player");
             return;
         }
 
