@@ -195,7 +195,7 @@ public class ShipManager : MonoBehaviour
         Debug.Log($"[ShipManager] Initializing pirates for faction {data.faction}");
         for (int i = 0; i < data.initialPirateCount; i++)
         {
-            if (SpawnPirate(data.faction) is Pirate pirate)
+            if (SpawnPirateShip(data.faction) is Pirate pirate)
             {
                 int shipsPerPirate = data.initialShipCount / data.initialPirateCount;
                 Debug.Log($"[ShipManager] Spawned pirate for faction {data.faction}, assigning {shipsPerPirate} ships");
@@ -251,5 +251,76 @@ public class ShipManager : MonoBehaviour
         return null;
     }
 
-    // Rest of the code remains the same...
+    private Pirate SpawnPirateShip(FactionType faction)
+    {
+        var pirateObj = Instantiate(piratePrefab, Vector3.zero, Quaternion.identity, piratesParent);
+        var pirate = pirateObj.GetComponent<Pirate>();
+        
+        if (pirate == null)
+        {
+            Debug.LogError("[ShipManager] Pirate prefab missing Pirate component!");
+            Destroy(pirateObj);
+            return null;
+        }
+
+        pirateObj.name = $"Pirate_{faction}_{Random.Range(1000, 9999)}";
+        pirate.SetFaction(faction);
+        return pirate;
+    }
+
+    private Vector3 GetSafeSpawnPosition(Vector3 center, float radius)
+    {
+        for (int i = 0; i < maxSpawnAttempts; i++)
+        {
+            Vector3 randomPos = center + Random.insideUnitSphere * radius;
+            randomPos.y = 0;
+
+            if (IsSafePosition(randomPos))
+            {
+                return randomPos;
+            }
+        }
+
+        return center + Random.insideUnitSphere * radius * 0.5f;
+    }
+
+    private bool IsSafePosition(Vector3 position)
+    {
+        foreach (Vector3 occupied in occupiedPositions)
+        {
+            if (Vector3.Distance(position, occupied) < minSpawnDistance)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private FactionShipData GetFactionShipData(FactionType faction)
+    {
+        return factionShipData.Find(data => data.faction == faction);
+    }
+
+    public void OnShipDestroyed(Ship ship)
+    {
+        if (ship != null)
+        {
+            Debug.Log($"[ShipManager] Ship {ship.ShipName} destroyed, removing from occupied positions");
+            occupiedPositions.Remove(ship.transform.position);
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
+
+    void OnValidate()
+    {
+        if (minSpawnDistance < 0) minSpawnDistance = 50f;
+        if (maxSpawnAttempts < 1) maxSpawnAttempts = 10;
+    }
 }
