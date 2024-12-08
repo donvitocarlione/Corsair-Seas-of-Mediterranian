@@ -1,9 +1,1 @@
-public enum FactionType
-{
-    None,
-    Pirates,
-    Merchants,
-    RoyalNavy,
-    Ottomans,
-    Venetians
-}
+// This file is now deprecated. Please use FactionEnum.cs instead.

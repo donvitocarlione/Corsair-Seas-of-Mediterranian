@@ -61,7 +61,7 @@ public class Pirate : SeaEntityBase, IShipOwner
         wealth = Mathf.Max(0f, wealth + amount);
     }
 
-    public override bool SetFaction(FactionType newFaction)
+    public override void SetFaction(FactionType newFaction)
     {
         if (!isInitialized || newFaction != Faction)
         {
@@ -70,16 +70,11 @@ public class Pirate : SeaEntityBase, IShipOwner
                 UnregisterFromFaction();
             }
             
-            bool changed = base.SetFaction(newFaction);
-            if (changed)
-            {
-                RegisterWithFaction();
-                isInitialized = true;
-                HandleFactionChanged(newFaction);
-            }
-            return changed;
+            base.SetFaction(newFaction);
+            RegisterWithFaction();
+            isInitialized = true;
+            HandleFactionChanged(newFaction);
         }
-        return false;
     }
 
     private void RegisterWithFaction()
