@@ -11,10 +11,13 @@ public class ShipSelectionHandler : MonoBehaviour
     private Material[] originalMaterials;
     private Material selectedMaterial;
     private Ship shipReference;
+    private ShipMovement movementComponent;
     
     private void Awake()
     {
         shipReference = GetComponent<Ship>();
+        movementComponent = GetComponent<ShipMovement>();
+        
         if (shipReference == null)
         {
             Debug.LogError($"[ShipSelectionHandler] No Ship component found on {gameObject.name}");
@@ -88,6 +91,22 @@ public class ShipSelectionHandler : MonoBehaviour
         if (shipReference != null && shipReference.ShipOwner != null && shipReference.ShipOwner is Player player)
         {
             player.SelectShip(shipReference);
+        }
+    }
+
+    private void OnMouseOver()
+    {
+        // Handle right-click for movement when selected
+        if (Input.GetMouseButtonDown(1) && shipReference != null && shipReference.IsSelected && movementComponent != null)
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            
+            if (Physics.Raycast(ray, out hit))
+            {
+                // Move to clicked position
+                movementComponent.SetTargetPosition(hit.point);
+            }
         }
     }
 
