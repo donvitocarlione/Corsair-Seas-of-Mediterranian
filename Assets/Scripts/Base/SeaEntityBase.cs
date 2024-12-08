@@ -1,33 +1,37 @@
 using UnityEngine;
 
-public abstract class SeaEntityBase : MonoBehaviour
+namespace CSM.Base
 {
-    [SerializeField] protected string entityName;
-    protected FactionType faction;
-
-    protected virtual void Start()
+    public abstract class SeaEntityBase : MonoBehaviour
     {
-        if (string.IsNullOrEmpty(entityName))
+        [SerializeField] protected string entityName;
+        protected FactionType faction;
+
+        protected virtual void Start()
         {
-            entityName = gameObject.name;
+            if (string.IsNullOrEmpty(entityName))
+            {
+                entityName = gameObject.name;
+            }
         }
-    }
 
-    public virtual void SetFaction(FactionType newFaction)
-    {
-        faction = newFaction;
-    }
-
-    public virtual void SetName(string newName)
-    {
-        if (!string.IsNullOrEmpty(newName))
+        public virtual void SetFaction(FactionType newFaction)
         {
-            entityName = newName;
+            faction = newFaction;
         }
+
+        public virtual void SetName(string newName)
+        {
+            if (!string.IsNullOrEmpty(newName))
+            {
+                entityName = newName;
+                gameObject.name = newName;
+            }
+        }
+
+        public FactionType Faction => faction;
+        public string Name => entityName;
+
+        protected virtual void OnDestroy() { }
     }
-
-    public FactionType Faction => faction;
-    public string Name => entityName;
-
-    protected virtual void OnDestroy() { }
 }
