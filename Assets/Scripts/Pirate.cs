@@ -2,13 +2,13 @@ using UnityEngine;
 using System.Collections.Generic;
 
 [AddComponentMenu("Game/Pirate")]
-public class Pirate : SeaEntityBase
+public class Pirate : SeaEntityBase, IShipOwner
 {
     protected List<Ship> ownedShips;
     [SerializeField, Range(0f, 100f), Tooltip("Pirate's reputation affects trading and diplomacy")]
-    public float reputation = 50f;
+    protected float reputation = 50f;
     [SerializeField, Min(0f), Tooltip("Current wealth in gold coins")]
-    public float wealth = 1000f;
+    protected float wealth = 1000f;
 
     private bool isInitialized;
     private const float MIN_REPUTATION = 0f;
@@ -19,8 +19,9 @@ public class Pirate : SeaEntityBase
         ownedShips = new List<Ship>();
     }
     
-    protected virtual void Start()
+    protected override void Start()
     {
+        base.Start();
         // Only register if not the player (player will be registered by ShipManager)
         if (!(this is Player))
         {
@@ -28,8 +29,9 @@ public class Pirate : SeaEntityBase
         }
     }
 
-    protected virtual void OnDestroy()
+    protected override void OnDestroy()
     {
+        base.OnDestroy();
         if (isInitialized)
         {
             UnregisterFromFaction();
@@ -59,19 +61,24 @@ public class Pirate : SeaEntityBase
         wealth = Mathf.Max(0f, wealth + amount);
     }
 
-    public override void SetFaction(FactionType faction)
+    public override bool SetFaction(FactionType newFaction)
     {
-        if (!isInitialized || faction != Faction)
+        if (!isInitialized || newFaction != Faction)
         {
             if (isInitialized)
             {
                 UnregisterFromFaction();
             }
             
-            base.SetFaction(faction);
-            RegisterWithFaction();
-            isInitialized = true;
+            bool changed = base.SetFaction(newFaction);
+            if (changed)
+            {
+                RegisterWithFaction();
+                isInitialized = true;
+            }
+            return changed;
         }
+        return false;
     }
 
     private void RegisterWithFaction()
@@ -120,8 +127,8 @@ public class Pirate : SeaEntityBase
         {
             ownedShips.Add(ship);
             ship.SetOwner(this);
-            ship.SetFaction(Faction); // Ensure ship has same faction
-            Debug.Log($"Added ship {ship.shipName} to {GetType().Name}'s fleet");
+            ship.Initialize(Faction, ship.Name); // Ensure ship has same faction
+            Debug.Log($"Added ship {ship.Name} to {GetType().Name}'s fleet");
         }
     }
 
@@ -136,11 +143,11 @@ public class Pirate : SeaEntityBase
         if (ownedShips.Contains(ship))
         {
             ownedShips.Remove(ship);
-            if (ship.owner == this)
+            if (ship.Owner == this)
             {
-                ship.SetOwner(null);
+                ship.ClearOwner();
             }
-            Debug.Log($"Removed ship {ship.shipName} from {GetType().Name}'s fleet");
+            Debug.Log($"Removed ship {ship.Name} from {GetType().Name}'s fleet");
         }
     }
 
@@ -170,10 +177,9 @@ public class Pirate : SeaEntityBase
         return new List<Ship>(ownedShips);
     }
 
-    protected override void OnFactionChanged()
+    protected virtual void OnFactionChanged(FactionType newFaction)
     {
-        base.OnFactionChanged();
-        Debug.Log($"{GetType().Name}'s faction changed to {Faction}");
+        Debug.Log($"{GetType().Name}'s faction changed to {newFaction}");
 
         if (ownedShips == null) return;
         
@@ -182,7 +188,7 @@ public class Pirate : SeaEntityBase
         {
             if (ship != null)
             {
-                ship.SetFaction(Faction);
+                ship.Initialize(newFaction, ship.Name);
             }
         }
     }
