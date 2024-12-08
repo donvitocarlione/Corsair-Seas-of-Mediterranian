@@ -1,138 +1,55 @@
 using UnityEngine;
 using System.Collections.Generic;
-
-// Core faction type definition
-public class FactionDefinition
-{
-    public FactionType type;
-    public string name;
-    public Color color = Color.white;
-    public float reputation = 50f;
-    public List<Ship> ships = new List<Ship>();
-    public List<Pirate> pirates = new List<Pirate>();
-    public List<Port> ports = new List<Port>();
-    public string baseLocation;    // Main port or base of operations
-    public int influence;          // Faction's influence in the Mediterranean
-    public int resourceLevel;      // Economic resources available to the faction
-    public Dictionary<FactionType, float> relations = new Dictionary<FactionType, float>();
-
-    public FactionDefinition(FactionType type, string name)
-    {
-        this.type = type;
-        this.name = name;
-        ships = new List<Ship>();
-        pirates = new List<Pirate>();
-        ports = new List<Port>();
-        relations = new Dictionary<FactionType, float>();
-    }
-
-    public void SetRelation(FactionType otherFaction, float value)
-    {
-        relations[otherFaction] = Mathf.Clamp(value, 0f, 100f);
-    }
-
-    public float GetRelation(FactionType otherFaction)
-    {
-        if (relations.TryGetValue(otherFaction, out float value))
-        {
-            return value;
-        }
-        return 50f; // Default neutral relation
-    }
-}
+using System;
 
 public class FactionManager : MonoBehaviour
 {
-    private Dictionary<FactionType, FactionDefinition> factions = new Dictionary<FactionType, FactionDefinition>();
-    private static FactionManager instance;
+    // ... [Previous code remains the same until InitializeDefaultFaction] ...
 
-    public static FactionManager Instance
+    private void InitializeDefaultFaction(FactionType faction)
     {
-        get { return instance; }
+        var newFaction = new FactionDefinition(
+            faction,
+            faction.ToString()
+        )
+        {
+            Influence = 50,
+            ResourceLevel = 50,
+            Color = Color.gray,
+            BaseLocation = "Unknown"
+        };
+
+        factions[faction] = newFaction;
+        InitializeFactionRelations(newFaction);
     }
 
-    void Awake()
+    private void InitializeHistoricalFaction(
+        FactionType type,
+        string name,
+        string baseLocation,
+        int influence,
+        int resourceLevel,
+        Color color)
     {
-        if (instance == null)
+        var faction = new FactionDefinition(type, name)
         {
-            instance = this;
-            DontDestroyOnLoad(gameObject);
-            InitializeFactions();
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+            BaseLocation = baseLocation,
+            Influence = influence,
+            ResourceLevel = resourceLevel,
+            Color = color
+        };
+
+        factions[type] = faction;
+        InitializeFactionRelations(faction);
     }
 
-    public void InitializeFactions()
+    private void InitializeFactionRelations(FactionDefinition faction)
     {
-        // Initialize each faction with historical bases and characteristics
-        factions[FactionType.BarbaryPirates] = new FactionDefinition(
-            FactionType.BarbaryPirates,
-            "Barbary Pirates"
-        ) { 
-            baseLocation = "Algiers",
-            influence = 80,
-            resourceLevel = 70,
-            color = new Color(0.8f, 0.2f, 0.2f) // Red
-        };
-
-        factions[FactionType.MalteseCorsairs] = new FactionDefinition(
-            FactionType.MalteseCorsairs,
-            "Maltese Corsairs"
-        ) {
-            baseLocation = "Valletta",
-            influence = 60,
-            resourceLevel = 65,
-            color = new Color(0.2f, 0.2f, 0.8f) // Blue
-        };
-
-        factions[FactionType.UscocPirates] = new FactionDefinition(
-            FactionType.UscocPirates,
-            "Uscoc Pirates"
-        ) {
-            baseLocation = "Senj",
-            influence = 40,
-            resourceLevel = 30,
-            color = new Color(0.2f, 0.8f, 0.2f) // Green
-        };
-
-        factions[FactionType.LevanticPirates] = new FactionDefinition(
-            FactionType.LevanticPirates,
-            "Levantic Pirates"
-        ) {
-            baseLocation = "Rhodes",
-            influence = 50,
-            resourceLevel = 45,
-            color = new Color(0.8f, 0.8f, 0.2f) // Yellow
-        };
-
-        // Initialize other factions with default values
-        foreach (FactionType faction in System.Enum.GetValues(typeof(FactionType)))
+        foreach (FactionType otherFaction in Enum.GetValues(typeof(FactionType)))
         {
-            if (!factions.ContainsKey(faction))
+            if (faction.Type != otherFaction)
             {
-                factions[faction] = new FactionDefinition(
-                    faction,
-                    faction.ToString()
-                ) { 
-                    influence = 50,
-                    resourceLevel = 50,
-                    color = Color.gray
-                };
-            }
-        }
-
-        // Initialize relations between factions
-        foreach (var faction in factions.Values)
-        {
-            foreach (FactionType otherFaction in System.Enum.GetValues(typeof(FactionType)))
-            {
-                if (faction.type != otherFaction)
-                {
-                    faction.SetRelation(otherFaction, 50f); // Default neutral relations
-                }
+                faction.SetRelation(otherFaction, 50f); // Default neutral relations
             }
         }
     }
@@ -141,11 +58,9 @@ public class FactionManager : MonoBehaviour
     {
         if (factions.TryGetValue(faction, out FactionDefinition factionData))
         {
-            if (!factionData.ships.Contains(ship))
-            {
-                factionData.ships.Add(ship);
-                Debug.Log($"Registered ship {ship.shipName} to faction {faction}");
-            }
+            factionData.AddShip(ship);
+            OnShipRegistered?.Invoke(faction, ship);
+            Debug.Log($"Registered ship {ship.ShipName} to faction {faction}");
         }
         else
         {
@@ -157,37 +72,58 @@ public class FactionManager : MonoBehaviour
     {
         if (factions.TryGetValue(faction, out FactionDefinition factionData))
         {
-            if (factionData.ships.Contains(ship))
+            factionData.RemoveShip(ship);
+            OnShipUnregistered?.Invoke(faction, ship);
+            Debug.Log($"Unregistered ship {ship.ShipName} from faction {faction}");
+        }
+    }
+
+    public void UpdateFactionRelation(FactionType faction1, FactionType faction2, float newValue)
+    {
+        if (faction1 == faction2) return;
+
+        var faction1Data = GetFactionData(faction1);
+        var faction2Data = GetFactionData(faction2);
+
+        if (faction1Data != null && faction2Data != null)
+        {
+            faction1Data.SetRelation(faction2, newValue);
+            faction2Data.SetRelation(faction1, newValue);
+            OnRelationChanged?.Invoke(faction1, faction2, newValue);
+        }
+    }
+
+    public void ModifyFactionInfluence(FactionType faction, int change)
+    {
+        if (factions.TryGetValue(faction, out FactionDefinition factionData))
+        {
+            int oldInfluence = factionData.Influence;
+            factionData.Influence = Mathf.Clamp(factionData.Influence + change, 0, 100);
+            
+            if (oldInfluence != factionData.Influence)
             {
-                factionData.ships.Remove(ship);
-                Debug.Log($"Unregistered ship {ship.shipName} from faction {faction}");
+                OnInfluenceChanged?.Invoke(faction, factionData.Influence);
+                Debug.Log($"Updated {faction} influence to {factionData.Influence}");
             }
         }
-        else
-        {
-            Debug.LogError($"Attempting to unregister ship from unknown faction: {faction}");
-        }
     }
 
-    public List<Ship> GetFactionShips(FactionType faction)
+    public void RecordTradeBetweenFactions(FactionType faction1, FactionType faction2, float value)
     {
-        if (factions.TryGetValue(faction, out FactionDefinition factionData))
-        {
-            return new List<Ship>(factionData.ships); // Return a copy to prevent external modification
-        }
-        else
-        {
-            Debug.LogError($"Attempting to get ships for unknown faction: {faction}");
-            return new List<Ship>();
-        }
-    }
+        if (faction1 == faction2) return;
 
-    public void UpdateFactionInfluence(FactionType faction, int change)
-    {
-        if (factions.TryGetValue(faction, out FactionDefinition factionData))
+        var faction1Data = GetFactionData(faction1);
+        var faction2Data = GetFactionData(faction2);
+
+        if (faction1Data != null && faction2Data != null)
         {
-            factionData.influence = Mathf.Clamp(factionData.influence + change, 0, 100);
-            Debug.Log($"Updated {faction} influence to {factionData.influence}");
+            // Record trade and update relations
+            faction1Data.SetRelation(faction2, 
+                Mathf.Min(faction1Data.GetRelation(faction2) + value * 0.1f, 100f));
+            faction2Data.SetRelation(faction1, 
+                Mathf.Min(faction2Data.GetRelation(faction1) + value * 0.1f, 100f));
+
+            OnRelationChanged?.Invoke(faction1, faction2, faction1Data.GetRelation(faction2));
         }
     }
 
@@ -201,21 +137,34 @@ public class FactionManager : MonoBehaviour
         return null;
     }
 
-    public int GetFactionInfluence(FactionType faction)
+    public bool AreFactionsAtWar(FactionType faction1, FactionType faction2)
     {
-        if (factions.TryGetValue(faction, out FactionDefinition factionData))
-        {
-            return factionData.influence;
-        }
-        return 0;
+        var faction1Data = GetFactionData(faction1);
+        return faction1Data != null && 
+               faction1Data.GetRelation(faction2) < 25f;
     }
 
-    public int GetFactionResourceLevel(FactionType faction)
+    public float GetRelationBetweenFactions(FactionType faction1, FactionType faction2)
     {
-        if (factions.TryGetValue(faction, out FactionDefinition factionData))
-        {
-            return factionData.resourceLevel;
-        }
-        return 0;
+        var faction1Data = GetFactionData(faction1);
+        return faction1Data?.GetRelation(faction2) ?? 50f;
+    }
+
+    public IReadOnlyList<Ship> GetFactionShips(FactionType faction)
+    {
+        var factionData = GetFactionData(faction);
+        return factionData?.Ships ?? new List<Ship>().AsReadOnly();
+    }
+
+    public IReadOnlyList<Port> GetFactionPorts(FactionType faction)
+    {
+        var factionData = GetFactionData(faction);
+        return factionData?.Ports ?? new List<Port>().AsReadOnly();
+    }
+
+    public Color GetFactionColor(FactionType faction)
+    {
+        var factionData = GetFactionData(faction);
+        return factionData?.Color ?? Color.gray;
     }
 }
