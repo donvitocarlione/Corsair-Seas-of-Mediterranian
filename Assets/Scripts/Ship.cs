@@ -49,7 +49,7 @@ public class Ship : SeaEntityBase
 
     public virtual void SetOwner(IShipOwner newOwner)
     {
-        if (owner != null && owner != newOwner)
+        if (owner != null && !ReferenceEquals(owner, newOwner))
         {
             owner.RemoveShip(this);
         }
