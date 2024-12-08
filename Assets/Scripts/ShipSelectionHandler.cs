@@ -11,13 +11,10 @@ public class ShipSelectionHandler : MonoBehaviour
     private Material[] originalMaterials;
     private Material selectedMaterial;
     private Ship shipReference;
-    private ShipMovement movementComponent;
     
     private void Awake()
     {
         shipReference = GetComponent<Ship>();
-        movementComponent = GetComponent<ShipMovement>();
-        
         if (shipReference == null)
         {
             Debug.LogError($"[ShipSelectionHandler] No Ship component found on {gameObject.name}");
@@ -46,8 +43,21 @@ public class ShipSelectionHandler : MonoBehaviour
 
     public bool Select()
     {
-        if (shipReference == null || shipReference.ShipOwner == null || !(shipReference.ShipOwner is Player))
+        if (shipReference == null)
         {
+            Debug.LogError($"[ShipSelectionHandler] Cannot select - shipReference is null on {gameObject.name}");
+            return false;
+        }
+
+        if (shipReference.ShipOwner == null)
+        {
+            Debug.LogError($"[ShipSelectionHandler] Cannot select - ship has no owner on {gameObject.name}");
+            return false;
+        }
+
+        if (!(shipReference.ShipOwner is Player))
+        {
+            Debug.LogWarning($"[ShipSelectionHandler] Cannot select - ship's owner is not a Player on {gameObject.name}");
             return false;
         }
         
@@ -88,26 +98,28 @@ public class ShipSelectionHandler : MonoBehaviour
 
     private void OnMouseDown()
     {
-        if (shipReference != null && shipReference.ShipOwner != null && shipReference.ShipOwner is Player player)
+        Debug.Log($"[ShipSelectionHandler] OnMouseDown triggered on {gameObject.name}");
+        
+        if (shipReference == null)
         {
-            player.SelectShip(shipReference);
+            Debug.LogError($"[ShipSelectionHandler] OnMouseDown - shipReference is null on {gameObject.name}");
+            return;
         }
-    }
 
-    private void OnMouseOver()
-    {
-        // Handle right-click for movement when selected
-        if (Input.GetMouseButtonDown(1) && shipReference != null && shipReference.IsSelected && movementComponent != null)
+        if (shipReference.ShipOwner == null)
         {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            RaycastHit hit;
-            
-            if (Physics.Raycast(ray, out hit))
-            {
-                // Move to clicked position
-                movementComponent.SetTargetPosition(hit.point);
-            }
+            Debug.LogError($"[ShipSelectionHandler] OnMouseDown - ship has no owner on {gameObject.name}");
+            return;
         }
+
+        if (!(shipReference.ShipOwner is Player player))
+        {
+            Debug.LogWarning($"[ShipSelectionHandler] OnMouseDown - ship's owner is not a Player on {gameObject.name}");
+            return;
+        }
+
+        Debug.Log($"[ShipSelectionHandler] Selecting ship {shipReference.ShipName}");
+        player.SelectShip(shipReference);
     }
 
     private void OnDestroy()
