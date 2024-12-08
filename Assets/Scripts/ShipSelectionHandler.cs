@@ -43,7 +43,7 @@ public class ShipSelectionHandler : MonoBehaviour
 
     public bool Select()
     {
-        if (!shipReference.owner || !(shipReference.owner is Player))
+        if (shipReference == null || shipReference.ShipOwner == null || !(shipReference.ShipOwner is Player))
         {
             return false;
         }
@@ -85,9 +85,9 @@ public class ShipSelectionHandler : MonoBehaviour
 
     private void OnMouseDown()
     {
-        if (shipReference.owner != null && shipReference.owner is Player)
+        if (shipReference != null && shipReference.ShipOwner != null && shipReference.ShipOwner is Player player)
         {
-            shipReference.owner.SelectShip(shipReference);
+            player.SelectShip(shipReference);
         }
     }
 
