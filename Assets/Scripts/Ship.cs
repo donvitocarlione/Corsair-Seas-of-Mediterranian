@@ -30,25 +30,48 @@ public class Ship : SeaEntityBase
 
     protected virtual void Awake()
     {
+        Debug.Log($"[Ship] Awake called on {gameObject.name}");
         shipRigidbody = GetComponent<Rigidbody>();
         buoyancyComponent = GetComponent<Buoyancy>();
         movementComponent = GetComponent<ShipMovement>();
         currentHealth = maxHealth;
+
+        var collider = GetComponent<Collider>();
+        if (collider == null)
+        {
+            Debug.LogError($"[Ship] No Collider found on {gameObject.name}");
+        }
+
+        var selectionHandler = GetComponent<ShipSelectionHandler>();
+        if (selectionHandler == null)
+        {
+            Debug.LogError($"[Ship] No ShipSelectionHandler found on {gameObject.name}");
+        }
+
+        Debug.Log($"[Ship] Components check for {gameObject.name}:\n" +
+                  $"- Rigidbody: {shipRigidbody != null}\n" +
+                  $"- Buoyancy: {buoyancyComponent != null}\n" +
+                  $"- Movement: {movementComponent != null}\n" +
+                  $"- Collider: {collider != null}\n" +
+                  $"- SelectionHandler: {selectionHandler != null}");
     }
 
     protected override void Start()
     {
+        Debug.Log($"[Ship] Start called on {gameObject.name}");
         base.Start();
     }
 
     public virtual void Initialize(FactionType newFaction, string newName)
     {
+        Debug.Log($"[Ship] Initializing {gameObject.name} with faction {newFaction} and name {newName}");
         SetFaction(newFaction);
         SetName(newName);
     }
 
     public virtual void SetOwner(IShipOwner newOwner)
     {
+        Debug.Log($"[Ship] Setting owner for {gameObject.name} to {(newOwner != null ? newOwner.GetType().Name : "null")}");
         if (owner != null && !ReferenceEquals(owner, newOwner))
         {
             owner.RemoveShip(this);
@@ -59,16 +82,19 @@ public class Ship : SeaEntityBase
 
     public virtual void ClearOwner()
     {
+        Debug.Log($"[Ship] Clearing owner for {gameObject.name}");
         owner = null;
     }
 
     public virtual void Select()
     {
+        Debug.Log($"[Ship] Selecting {gameObject.name}");
         isSelected = true;
     }
 
     public virtual void Deselect()
     {
+        Debug.Log($"[Ship] Deselecting {gameObject.name}");
         isSelected = false;
     }
 
