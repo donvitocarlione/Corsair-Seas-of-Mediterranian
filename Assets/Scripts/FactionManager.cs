@@ -12,7 +12,7 @@ public class FactionManager : MonoBehaviour
         {
             if (instance == null)
             {
-                instance = FindFirstObjectByType<FactionManager>();
+                instance = FindAnyObjectByType<FactionManager>();
                 if (instance == null)
                 {
                     Debug.LogError("No FactionManager found in scene!");
@@ -226,6 +226,36 @@ public class FactionManager : MonoBehaviour
         else
         {
             Debug.LogWarning($"Attempting to modify influence of unknown faction: {faction}");
+        }
+    }
+
+    public void HandlePortCapture(FactionType capturingFaction, Port capturedPort)
+    {
+        if (capturedPort == null) return;
+
+        var oldFaction = capturedPort.OwningFaction;
+        var oldFactionData = GetFactionData(oldFaction);
+        var newFactionData = GetFactionData(capturingFaction);
+
+        if (oldFactionData != null)
+        {
+            oldFactionData.RemovePort(capturedPort);
+        }
+
+        if (newFactionData != null)
+        {
+            newFactionData.AddPort(capturedPort);
+            capturedPort.SetFaction(capturingFaction);
+            OnPortCaptured?.Invoke(capturingFaction, capturedPort);
+            
+            // Update relations and influence
+            if (oldFaction != FactionType.None)
+            {
+                float currentRelation = GetRelationBetweenFactions(oldFaction, capturingFaction);
+                UpdateFactionRelation(oldFaction, capturingFaction, currentRelation - 20f);
+                ModifyFactionInfluence(oldFaction, -10);
+                ModifyFactionInfluence(capturingFaction, 10);
+            }
         }
     }
 
