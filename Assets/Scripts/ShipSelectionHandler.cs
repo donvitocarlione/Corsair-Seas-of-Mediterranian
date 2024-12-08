@@ -15,8 +15,21 @@ public class ShipSelectionHandler : MonoBehaviour
     private Ship shipReference;
     private ShipMovement movementComponent;
     
+    private void OnEnable()
+    {
+        Debug.Log($"[ShipSelectionHandler] {gameObject.name} enabled:");
+        Debug.Log($"- Layer: {gameObject.layer} (Ship layer is {LayerMask.NameToLayer("Ship")})");
+        Debug.Log($"- Has Collider: {GetComponent<Collider>() != null}");
+        Debug.Log($"- Has Ship: {GetComponent<Ship>() != null}");
+        Debug.Log($"- Is on Ship layer: {gameObject.layer == LayerMask.NameToLayer("Ship")}");
+        Debug.Log($"- Selection Indicator assigned: {selectionIndicator != null}");
+        Debug.Log($"- Target Renderers count: {(targetRenderers != null ? targetRenderers.Length : 0)}");
+    }
+    
     private void Awake()
     {
+        Debug.Log($"[ShipSelectionHandler] Initializing {gameObject.name}");
+        
         shipReference = GetComponent<Ship>();
         movementComponent = GetComponent<ShipMovement>();
         
@@ -28,7 +41,9 @@ public class ShipSelectionHandler : MonoBehaviour
 
         if (targetRenderers == null || targetRenderers.Length == 0)
         {
+            Debug.Log("[ShipSelectionHandler] No target renderers assigned, auto-finding renderers");
             targetRenderers = GetComponentsInChildren<MeshRenderer>();
+            Debug.Log($"[ShipSelectionHandler] Found {targetRenderers.Length} renderers");
         }
 
         originalMaterials = new Material[targetRenderers.Length];
@@ -53,6 +68,7 @@ public class ShipSelectionHandler : MonoBehaviour
         if (obj == null) return;
         
         obj.layer = newLayer;
+        Debug.Log($"[ShipSelectionHandler] Setting layer for {obj.name} to {newLayer}");
         
         foreach (Transform child in obj.transform)
         {
@@ -63,10 +79,13 @@ public class ShipSelectionHandler : MonoBehaviour
     public void SetSelectedMaterial(Material material)
     {
         selectedMaterial = material;
+        Debug.Log($"[ShipSelectionHandler] Set selected material: {(material != null ? material.name : "null")}");
     }
 
     public bool Select()
     {
+        Debug.Log($"[ShipSelectionHandler] Attempting to select {gameObject.name}");
+        
         if (shipReference == null)
         {
             Debug.LogError($"[ShipSelectionHandler] Cannot select - shipReference is null on {gameObject.name}");
@@ -94,18 +113,31 @@ public class ShipSelectionHandler : MonoBehaviour
                     renderer.material = selectedMaterial;
                 }
             }
+            Debug.Log($"[ShipSelectionHandler] Applied selection material to {targetRenderers.Length} renderers");
+        }
+        else
+        {
+            Debug.LogWarning("[ShipSelectionHandler] No selected material assigned");
         }
         
         if (selectionIndicator != null)
         {
             selectionIndicator.SetActive(true);
+            Debug.Log("[ShipSelectionHandler] Activated selection indicator");
+        }
+        else
+        {
+            Debug.LogWarning("[ShipSelectionHandler] No selection indicator assigned");
         }
 
+        Debug.Log($"[ShipSelectionHandler] Successfully selected {gameObject.name}");
         return true;
     }
 
     public void Deselect()
     {
+        Debug.Log($"[ShipSelectionHandler] Deselecting {gameObject.name}");
+        
         for (int i = 0; i < targetRenderers.Length; i++)
         {
             if (targetRenderers[i] != null && originalMaterials[i] != null)
@@ -117,20 +149,28 @@ public class ShipSelectionHandler : MonoBehaviour
         if (selectionIndicator != null)
         {
             selectionIndicator.SetActive(false);
+            Debug.Log("[ShipSelectionHandler] Deactivated selection indicator");
         }
     }
 
     private void OnMouseDown()
     {
         Debug.Log($"[ShipSelectionHandler] OnMouseDown triggered on {gameObject.name}");
+        Debug.Log($"- Mouse Position: {Input.mousePosition}");
+        Debug.Log($"- Has Main Camera: {Camera.main != null}");
         
         // Verify the raycast hit against the correct layer
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        Debug.DrawRay(ray.origin, ray.direction * 100f, Color.red, 1f);
+        
         if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, selectableLayerMask))
         {
+            Debug.Log($"[ShipSelectionHandler] Raycast hit: {hit.collider.gameObject.name}");
+            
             if (hit.collider.gameObject != gameObject)
             {
-                return; // Hit something else
+                Debug.Log("[ShipSelectionHandler] Raycast hit different object");
+                return;
             }
 
             if (shipReference == null)
@@ -153,6 +193,10 @@ public class ShipSelectionHandler : MonoBehaviour
 
             Debug.Log($"[ShipSelectionHandler] Selecting ship {shipReference.ShipName}");
             player.SelectShip(shipReference);
+        }
+        else
+        {
+            Debug.Log("[ShipSelectionHandler] Raycast did not hit anything");
         }
     }
 
