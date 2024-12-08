@@ -1,0 +1,25 @@
+# Create a minimal .gitignore for scripts
+@"
+# Meta files
+*.meta
+
+# Visual Studio files
+*.csproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.opendb
+
+# OS generated
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+"@ | Out-File -FilePath ".gitignore" -Encoding UTF8
+
