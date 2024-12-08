@@ -17,10 +17,7 @@ public class Player : Pirate
 
     protected override void Start()
     {
-        // Initialize ship list
-        ownedShips ??= new List<Ship>();
-
-        // Find InputManager if not assigned
+        base.Start(); // Ensure Pirate initialization is performed
         InitializeInputManager();
     }
 
@@ -33,9 +30,17 @@ public class Player : Pirate
         {
             Debug.LogError("InputManager not found! Player controls will be disabled.");
         }
-        else
+    }
+
+    private void OnValidate()
+    {
+        if (inputManager == null)
         {
-            Debug.LogWarning("InputManager was found in scene but not assigned in inspector. Consider assigning it directly.");
+            Debug.LogWarning("InputManager reference not set. Will attempt to find it at runtime.");
+        }
+        if (shipSelectionUI == null)
+        {
+            Debug.LogWarning("ShipSelectionUI reference not set.");
         }
     }
 
