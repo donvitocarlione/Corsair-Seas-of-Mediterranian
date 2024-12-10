@@ -182,10 +182,12 @@ public class ShipManager : MonoBehaviour
         for (int i = 0; i < data.initialShipCount; i++)
         {
             Debug.Log($"[ShipManager] Spawning player ship {i + 1}/{data.initialShipCount}");
-            if (SpawnShipForFaction(data.faction) is Ship ship)
+            Ship ship = SpawnShipForFaction(data.faction);
+            if (ship != null)
             {
+                Debug.Log($"[ShipManager] PRE-ADD OWNERSHIP CHECK - Ship: {ship.ShipName}, Current Owner Type: {(ship.ShipOwner?.GetType().Name ?? "null")}");
                 playerInstance.AddShip(ship);
-                Debug.Log($"[ShipManager] Added ship {ship.ShipName} to player fleet");
+                Debug.Log($"[ShipManager] POST-ADD OWNERSHIP CHECK - Ship: {ship.ShipName}, New Owner Type: {(ship.ShipOwner?.GetType().Name ?? "null")}");
             }
         }
     }
@@ -195,17 +197,20 @@ public class ShipManager : MonoBehaviour
         Debug.Log($"[ShipManager] Initializing pirates for faction {data.faction}");
         for (int i = 0; i < data.initialPirateCount; i++)
         {
-            if (SpawnPirateShip(data.faction) is Pirate pirate)
+            var pirate = SpawnPirateShip(data.faction);
+            if (pirate != null)
             {
                 int shipsPerPirate = data.initialShipCount / data.initialPirateCount;
                 Debug.Log($"[ShipManager] Spawned pirate for faction {data.faction}, assigning {shipsPerPirate} ships");
                 
                 for (int j = 0; j < shipsPerPirate; j++)
                 {
-                    if (SpawnShipForFaction(data.faction) is Ship ship)
+                    Ship ship = SpawnShipForFaction(data.faction);
+                    if (ship != null)
                     {
+                        Debug.Log($"[ShipManager] PRE-ADD PIRATE OWNERSHIP CHECK - Ship: {ship.ShipName}, Current Owner Type: {(ship.ShipOwner?.GetType().Name ?? "null")}");
                         pirate.AddShip(ship);
-                        Debug.Log($"[ShipManager] Added ship {ship.ShipName} to pirate's fleet");
+                        Debug.Log($"[ShipManager] POST-ADD PIRATE OWNERSHIP CHECK - Ship: {ship.ShipName}, New Owner Type: {(ship.ShipOwner?.GetType().Name ?? "null")}");
                     }
                 }
             }
