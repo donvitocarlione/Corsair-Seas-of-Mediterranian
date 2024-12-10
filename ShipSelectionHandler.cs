@@ -24,6 +24,12 @@ public class ShipSelectionHandler : MonoBehaviour
         {
             StoreOriginalMaterials();
         }
+        
+        // Ensure selection indicator starts hidden
+        if (selectionIndicator != null)
+        {
+            selectionIndicator.SetActive(false);
+        }
     }
     
     private void Awake()
@@ -49,6 +55,12 @@ public class ShipSelectionHandler : MonoBehaviour
         if (gameObject.layer != LayerMask.NameToLayer("Ship"))
         {
             SetLayerRecursively(gameObject, LayerMask.NameToLayer("Ship"));
+        }
+
+        // Make sure selection indicator starts hidden
+        if (selectionIndicator != null)
+        {
+            selectionIndicator.SetActive(false);
         }
     }
 
@@ -79,9 +91,11 @@ public class ShipSelectionHandler : MonoBehaviour
     {
         if (!CanBeSelected())
         {
+            Debug.LogWarning($"[ShipSelectionHandler] Cannot select ship {gameObject.name} - conditions not met");
             return false;
         }
 
+        Debug.Log($"[ShipSelectionHandler] Selecting ship {gameObject.name}");
         ApplySelectedMaterial();
         ShowSelectionIndicator(true);
         return true;
@@ -89,6 +103,7 @@ public class ShipSelectionHandler : MonoBehaviour
 
     public void Deselect()
     {
+        Debug.Log($"[ShipSelectionHandler] Deselecting ship {gameObject.name}");
         RestoreOriginalMaterials();
         ShowSelectionIndicator(false);
     }
@@ -145,7 +160,12 @@ public class ShipSelectionHandler : MonoBehaviour
     {
         if (selectionIndicator != null)
         {
+            Debug.Log($"[ShipSelectionHandler] {(show ? "Showing" : "Hiding")} selection indicator for {gameObject.name}");
             selectionIndicator.SetActive(show);
+        }
+        else
+        {
+            Debug.LogWarning($"[ShipSelectionHandler] Selection indicator is null on {gameObject.name}");
         }
     }
 
