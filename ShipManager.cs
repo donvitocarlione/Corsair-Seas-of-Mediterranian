@@ -201,5 +201,157 @@ public class ShipManager : MonoBehaviour
         }
     }
 
-    // Rest of the class remains the same...
+    private void InitializePlayerShips(FactionShipData data)
+    {
+        Debug.Log($"[ShipManager] Initializing player ships for faction {data.faction}");
+        if (playerInstance == null)
+        {
+            Debug.LogError("[ShipManager] Cannot initialize player ships - playerInstance is null");
+            return;
+        }
+
+        for (int i = 0; i < data.initialShipCount; i++)
+        {
+            Debug.Log($"[ShipManager] Spawning player ship {i + 1}/{data.initialShipCount}");
+            if (SpawnShipForFaction(data.faction) is Ship ship)
+            {
+                Debug.Log($"[ShipManager] PRE-ADD OWNERSHIP CHECK - Ship: {ship.ShipName}, Current Owner Type: {(ship.ShipOwner?.GetType().Name ?? "null")}");
+                playerInstance.AddShip(ship);
+                Debug.Log($"[ShipManager] POST-ADD OWNERSHIP CHECK - Ship: {ship.ShipName}, New Owner Type: {(ship.ShipOwner?.GetType().Name ?? "null")}");
+            }
+        }
+    }
+
+    private void InitializePiratesForFaction(FactionShipData data)
+    {
+        Debug.Log($"[ShipManager] Initializing pirates for faction {data.faction}");
+        for (int i = 0; i < data.initialPirateCount; i++)
+        {
+            if (SpawnPirateShip(data.faction) is Pirate pirate)
+            {
+                int shipsPerPirate = data.initialShipCount / data.initialPirateCount;
+                Debug.Log($"[ShipManager] Spawned pirate for faction {data.faction}, assigning {shipsPerPirate} ships");
+                
+                for (int j = 0; j < shipsPerPirate; j++)
+                {
+                    if (SpawnShipForFaction(data.faction) is Ship ship)
+                    {
+                        Debug.Log($"[ShipManager] PRE-ADD PIRATE OWNERSHIP CHECK - Ship: {ship.ShipName}, Current Owner Type: {(ship.ShipOwner?.GetType().Name ?? "null")}");
+                        pirate.AddShip(ship);
+                        Debug.Log($"[ShipManager] POST-ADD PIRATE OWNERSHIP CHECK - Ship: {ship.ShipName}, New Owner Type: {(ship.ShipOwner?.GetType().Name ?? "null")}");
+                    }
+                }
+            }
+        }
+    }
+
+    public Ship SpawnShipForFaction(FactionType faction)
+    {
+        var data = GetFactionShipData(faction);
+        if (data == null)
+        {
+            Debug.LogError($"[ShipManager] No data found for faction {faction}");
+            return null;
+        }
+
+        var prefab = data.shipPrefabs[Random.Range(0, data.shipPrefabs.Count)];
+        var spawnPos = GetSafeSpawnPosition(data.spawnArea, data.spawnRadius);
+        
+        Debug.Log($"[ShipManager] Spawning ship at position {spawnPos}");
+        var shipObj = Instantiate(prefab, spawnPos, Quaternion.Euler(0, Random.Range(0, 360), 0), shipsParent);
+        var ship = shipObj.GetComponent<Ship>();
+        
+        if (ship != null)
+        {
+            string shipName = $"{faction}_Ship_{Random.Range(1000, 9999)}";
+            ship.Initialize(faction, shipName);
+            Debug.Log($"[ShipManager] Ship {shipName} initialized for faction {faction} (IsPlayerFaction: {data.isPlayerFaction})");
+            
+            if (!data.isPlayerFaction && shipObj.GetComponent<AIShipController>() == null)
+            {
+                shipObj.AddComponent<AIShipController>().Initialize(ship);
+                Debug.Log($"[ShipManager] Added AI controller to {shipName}");
+            }
+
+            occupiedPositions.Add(spawnPos);
+            return ship;
+        }
+        
+        Debug.LogError($"[ShipManager] Failed to get Ship component from prefab for faction {faction}");
+        Destroy(shipObj);
+        return null;
+    }
+
+    private Pirate SpawnPirateShip(FactionType faction)
+    {
+        var pirateObj = Instantiate(piratePrefab, Vector3.zero, Quaternion.identity, piratesParent);
+        var pirate = pirateObj.GetComponent<Pirate>();
+        
+        if (pirate == null)
+        {
+            Debug.LogError("[ShipManager] Pirate prefab missing Pirate component!");
+            Destroy(pirateObj);
+            return null;
+        }
+
+        pirateObj.name = $"Pirate_{faction}_{Random.Range(1000, 9999)}";
+        pirate.SetFaction(faction);
+        return pirate;
+    }
+
+    private Vector3 GetSafeSpawnPosition(Vector3 center, float radius)
+    {
+        for (int i = 0; i < maxSpawnAttempts; i++)
+        {
+            Vector3 randomPos = center + Random.insideUnitSphere * radius;
+            randomPos.y = 0;
+
+            if (IsSafePosition(randomPos))
+            {
+                return randomPos;
+            }
+        }
+
+        return center + Random.insideUnitSphere * radius * 0.5f;
+    }
+
+    private bool IsSafePosition(Vector3 position)
+    {
+        foreach (Vector3 occupied in occupiedPositions)
+        {
+            if (Vector3.Distance(position, occupied) < minSpawnDistance)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private FactionShipData GetFactionShipData(FactionType faction)
+    {
+        return factionShipData.Find(data => data.faction == faction);
+    }
+
+    public void OnShipDestroyed(Ship ship)
+    {
+        if (ship != null)
+        {
+            Debug.Log($"[ShipManager] Ship {ship.ShipName} destroyed, removing from occupied positions");
+            occupiedPositions.Remove(ship.transform.position);
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
+
+    void OnValidate()
+    {
+        if (minSpawnDistance < 0) minSpawnDistance = 50f;
+        if (maxSpawnAttempts < 1) maxSpawnAttempts = 10;
+    }
 }
