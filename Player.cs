@@ -4,6 +4,23 @@ using System.Collections.Generic;
 [AddComponentMenu("Game/Player")]
 public class Player : Pirate
 {
+    private static Player instance;
+    public static Player Instance
+    {
+        get
+        {
+            if (instance == null)
+            {
+                instance = FindAnyObjectByType<Player>();
+                if (instance == null)
+                {
+                    Debug.LogError("No Player instance found in scene!");
+                }
+            }
+            return instance;
+        }
+    }
+
     private Ship selectedShip;
     [SerializeField, Tooltip("Reference to the InputManager component")]
     private InputManager inputManager;
@@ -15,32 +32,58 @@ public class Player : Pirate
 
     public Ship SelectedShip => selectedShip;
 
+    protected override void Awake()
+    {
+        Debug.Log("[Player] Awake called");
+        if (instance != null && instance != this)
+        {
+            Debug.LogError("Multiple Player instances found! Destroying duplicate.");
+            Destroy(gameObject);
+            return;
+        }
+        instance = this;
+        
+        base.Awake();
+    }
+
     protected override void Start()
     {
+        Debug.Log("[Player] Start called");
         base.Start(); // Ensure Pirate initialization is performed
+        InitializeServices();
+    }
+
+    private void InitializeServices()
+    {
+        Debug.Log("[Player] Initializing services");
         InitializeInputManager();
+        InitializeUI();
     }
 
     private void InitializeInputManager()
     {
         if (inputManager != null) return;
 
-        inputManager = GameObject.FindFirstObjectByType<InputManager>();
+        inputManager = FindAnyObjectByType<InputManager>();
         if (inputManager == null)
         {
-            Debug.LogError("InputManager not found! Player controls will be disabled.");
+            Debug.LogError("[Player] InputManager not found! Player controls will be disabled.");
+        }
+        else
+        {
+            Debug.Log("[Player] InputManager found and initialized");
         }
     }
 
-    private void OnValidate()
+    private void InitializeUI()
     {
-        if (inputManager == null)
-        {
-            Debug.LogWarning("InputManager reference not set. Will attempt to find it at runtime.");
-        }
         if (shipSelectionUI == null)
         {
-            Debug.LogWarning("ShipSelectionUI reference not set.");
+            Debug.LogWarning("[Player] ShipSelectionUI reference not set.");
+        }
+        else
+        {
+            Debug.Log("[Player] ShipSelectionUI initialized");
         }
     }
 
@@ -48,52 +91,47 @@ public class Player : Pirate
     {
         if (ship == null)
         {
-            Debug.LogError("Attempting to select a null ship!");
+            Debug.LogError("[Player] Attempting to select a null ship!");
             return;
         }
 
         if (!ownedShips.Contains(ship))
         {
-            Debug.LogWarning($"Cannot select ship '{ship.ShipName}' - not owned by player");
+            Debug.LogWarning($"[Player] Cannot select ship '{ship.ShipName}' - not owned by player");
             return;
         }
 
-        // Cache previous selection
         Ship previousShip = selectedShip;
         
-        // Deselect current ship if any
         if (selectedShip != null)
         {
             selectedShip.Deselect();
             OnShipDeselected?.Invoke(selectedShip);
         }
 
-        // Select new ship
         selectedShip = ship;
         ship.Select();
         OnShipSelected?.Invoke(ship);
 
-        // Update UI if available
         shipSelectionUI?.UpdateSelection(ship);
-
-        // Notify input manager if available
         inputManager?.OnShipSelected(ship);
+
+        Debug.Log($"[Player] Selected ship: {ship.ShipName}");
     }
 
     public override void AddShip(Ship ship)
     {
         if (ship == null)
         {
-            Debug.LogError("Attempting to add a null ship!");
+            Debug.LogError("[Player] Attempting to add a null ship!");
             return;
         }
 
         base.AddShip(ship);
+        Debug.Log($"[Player] Added ship to fleet: {ship.ShipName}");
         
-        // Update UI if available
         shipSelectionUI?.UpdateShipList(GetOwnedShips());
 
-        // Auto-select if this is the first ship
         if (selectedShip == null && ownedShips.Count == 1)
         {
             SelectShip(ship);
@@ -104,7 +142,7 @@ public class Player : Pirate
     {
         if (ship == null)
         {
-            Debug.LogError("Attempting to remove a null ship!");
+            Debug.LogError("[Player] Attempting to remove a null ship!");
             return;
         }
 
@@ -116,10 +154,10 @@ public class Player : Pirate
         }
 
         base.RemoveShip(ship);
+        Debug.Log($"[Player] Removed ship from fleet: {ship.ShipName}");
         
         shipSelectionUI?.UpdateShipList(GetOwnedShips());
 
-        // Auto-select another ship if available
         if (selectedShip == null && ownedShips.Count > 0)
         {
             SelectShip(ownedShips[0]);
@@ -167,7 +205,11 @@ public class Player : Pirate
     
     protected override void OnDestroy()
     {
-        // Clean up event listeners
+        if (instance == this)
+        {
+            instance = null;
+        }
+
         OnShipSelected = null;
         OnShipDeselected = null;
 
