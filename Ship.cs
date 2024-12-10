@@ -29,7 +29,7 @@ public class Ship : MonoBehaviour
     public IShipOwner ShipOwner => owner;
     public string ShipName => Name;
     public string Name => shipName;
-    public FactionType Faction => faction;
+    public FactionType Faction => owner != null ? owner.Faction : faction;
 
     protected virtual void Awake()
     {
@@ -67,7 +67,7 @@ public class Ship : MonoBehaviour
     public virtual void Initialize(FactionType newFaction, string newName)
     {
         Debug.Log($"[Ship] Initializing {gameObject.name} with faction {newFaction} and name {newName}");
-        SetFaction(newFaction);
+        faction = newFaction;  // Set initial faction
         SetName(newName);
     }
 
@@ -76,45 +76,33 @@ public class Ship : MonoBehaviour
         shipName = newName;
     }
 
-    public void SetFaction(FactionType newFaction)
-    {
-        // Only allow faction changes if the ship has no owner
-        if (owner != null)
-        {
-            Debug.LogWarning($"[Ship] Attempted to change faction of {shipName} while owned by {owner.GetType().Name}. Faction changes must be done through the owner.");
-            return;
-        }
-
-        Debug.Log($"[Ship] Setting faction for {shipName} from {faction} to {newFaction}");
-        faction = newFaction;
-    }
-
     public virtual void SetOwner(IShipOwner newOwner)
     {
         Debug.Log($"[Ship] Setting owner for {gameObject.name} to {(newOwner != null ? newOwner.GetType().Name : "null")}");
         
-        if (newOwner != null)
-        {
-            // Validate faction matches owner's faction
-            if (newOwner.Faction != faction)
-            {
-                Debug.Log($"[Ship] Updating faction from {faction} to match new owner's faction {newOwner.Faction}");
-                faction = newOwner.Faction;
-            }
-        }
-
+        // If we already have a different owner, remove the ship from their list
         if (owner != null && !ReferenceEquals(owner, newOwner))
         {
             owner.RemoveShip(this);
         }
 
         owner = newOwner;
+        
+        // When owner is cleared, revert to the original faction
+        if (newOwner == null)
+        {
+            Debug.Log($"[Ship] Owner cleared, reverting to original faction {faction}");
+        }
+        else
+        {
+            Debug.Log($"[Ship] Now owned by {newOwner.GetType().Name} with faction {newOwner.Faction}");
+        }
     }
 
     public virtual void ClearOwner()
     {
         Debug.Log($"[Ship] Clearing owner for {gameObject.name}");
-        owner = null;
+        SetOwner(null);
     }
 
     public virtual void Select()
