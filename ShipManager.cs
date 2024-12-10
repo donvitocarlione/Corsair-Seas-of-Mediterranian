@@ -111,12 +111,6 @@ public class ShipManager : MonoBehaviour
             playerFaction = playerFactionData.faction;
             Debug.Log($"[ShipManager] Player faction validated: {playerFaction}");
         }
-
-        // Log configuration for debugging
-        foreach (var data in factionShipData)
-        {
-            Debug.Log($"[ShipManager] Faction: {data.faction}, IsPlayerFaction: {data.isPlayerFaction}");
-        }
     }
 
     private void CreateContainers()
@@ -144,11 +138,6 @@ public class ShipManager : MonoBehaviour
             return false;
         }
 
-        foreach (var data in factionShipData)
-        {
-            Debug.Log($"[ShipManager] Faction config - Type: {data.faction}, IsPlayerFaction: {data.isPlayerFaction}, Ships: {data.initialShipCount}, Pirates: {data.initialPirateCount}");
-        }
-
         return factionShipData.TrueForAll(data => data.Validate());
     }
 
@@ -165,7 +154,6 @@ public class ShipManager : MonoBehaviour
     {
         Debug.Log("[ShipManager] Initializing all factions");
 
-        // Wait for Player instance
         Player playerInstance = Player.Instance;
         if (playerInstance == null)
         {
@@ -173,7 +161,7 @@ public class ShipManager : MonoBehaviour
             return;
         }
 
-        // Set player's faction
+        // Set player's faction first - this is the single source of truth
         playerInstance.SetFaction(playerFaction);
         Debug.Log($"[ShipManager] Set player faction to: {playerFaction}");
 
@@ -183,7 +171,7 @@ public class ShipManager : MonoBehaviour
             
             if (data.isPlayerFaction)
             {
-                InitializePlayerShips(data, playerInstance);
+                InitializePlayerShips(playerInstance, data.initialShipCount);
             }
             else
             {
@@ -192,18 +180,17 @@ public class ShipManager : MonoBehaviour
         }
     }
 
-    private void InitializePlayerShips(FactionShipData data, Player player)
+    private void InitializePlayerShips(Player player, int shipCount)
     {
-        Debug.Log($"[ShipManager] Initializing player ships for faction {data.faction}");
-        for (int i = 0; i < data.initialShipCount; i++)
+        Debug.Log($"[ShipManager] Initializing {shipCount} player ships");
+        for (int i = 0; i < shipCount; i++)
         {
-            Debug.Log($"[ShipManager] Spawning player ship {i + 1}/{data.initialShipCount}");
-            Ship ship = SpawnShipForFaction(data.faction);
+            // Use player's faction directly instead of from data
+            Ship ship = SpawnShipForFaction(player.Faction, true);
             if (ship != null)
             {
-                Debug.Log($"[ShipManager] PRE-ADD OWNERSHIP CHECK - Ship: {ship.ShipName}, Current Owner Type: {(ship.ShipOwner?.GetType().Name ?? "null")}");
                 player.AddShip(ship);
-                Debug.Log($"[ShipManager] POST-ADD OWNERSHIP CHECK - Ship: {ship.ShipName}, New Owner Type: {(ship.ShipOwner?.GetType().Name ?? "null")}");
+                Debug.Log($"[ShipManager] Added ship {ship.ShipName} to player's fleet");
             }
         }
     }
@@ -220,21 +207,19 @@ public class ShipManager : MonoBehaviour
                 
                 for (int j = 0; j < shipsPerPirate; j++)
                 {
-                    Ship ship = SpawnShipForFaction(data.faction);
+                    Ship ship = SpawnShipForFaction(data.faction, false);
                     if (ship != null)
                     {
-                        Debug.Log($"[ShipManager] PRE-ADD PIRATE OWNERSHIP CHECK - Ship: {ship.ShipName}, Current Owner Type: {(ship.ShipOwner?.GetType().Name ?? "null")}");
                         pirate.AddShip(ship);
-                        Debug.Log($"[ShipManager] POST-ADD PIRATE OWNERSHIP CHECK - Ship: {ship.ShipName}, New Owner Type: {(ship.ShipOwner?.GetType().Name ?? "null")}");
                     }
                 }
             }
         }
     }
 
-    public Ship SpawnShipForFaction(FactionType faction)
+    public Ship SpawnShipForFaction(FactionType faction, bool isPlayerShip)
     {
-        Debug.Log($"[ShipManager] Attempting to spawn ship for faction {faction}");
+        Debug.Log($"[ShipManager] Spawning ship for faction {faction} (Player: {isPlayerShip})");
         var data = GetFactionShipData(faction);
         if (data == null)
         {
@@ -245,7 +230,6 @@ public class ShipManager : MonoBehaviour
         var prefab = data.shipPrefabs[Random.Range(0, data.shipPrefabs.Count)];
         var spawnPos = GetSafeSpawnPosition(data.spawnArea, data.spawnRadius);
         
-        Debug.Log($"[ShipManager] Spawning ship at position {spawnPos}");
         var shipObj = Instantiate(prefab, spawnPos, Quaternion.Euler(0, Random.Range(0, 360), 0), shipsParent);
         var ship = shipObj.GetComponent<Ship>();
         
@@ -253,9 +237,8 @@ public class ShipManager : MonoBehaviour
         {
             string shipName = $"{faction}_Ship_{Random.Range(1000, 9999)}";
             ship.Initialize(faction, shipName);
-            Debug.Log($"[ShipManager] Ship {shipName} initialized for faction {faction} (IsPlayerFaction: {data.isPlayerFaction})");
             
-            if (!data.isPlayerFaction && shipObj.GetComponent<AIShipController>() == null)
+            if (!isPlayerShip && shipObj.GetComponent<AIShipController>() == null)
             {
                 shipObj.AddComponent<AIShipController>().Initialize(ship);
                 Debug.Log($"[ShipManager] Added AI controller to {shipName}");
@@ -324,7 +307,6 @@ public class ShipManager : MonoBehaviour
     {
         if (ship != null)
         {
-            Debug.Log($"[ShipManager] Ship {ship.ShipName} destroyed, removing from occupied positions");
             occupiedPositions.Remove(ship.transform.position);
         }
     }
