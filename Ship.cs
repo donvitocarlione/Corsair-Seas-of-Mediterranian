@@ -1,15 +1,16 @@
 using UnityEngine;
 using System.Collections;
 using UnityEngine.Events;
-using CSM.Base;
 
-public class Ship : SeaEntityBase
+public class Ship : MonoBehaviour
 {
     [Header("Ship Properties")]
     [SerializeField] protected float maxHealth = 100f;
     [SerializeField] protected float sinkingThreshold = 20f;
     [SerializeField] protected GameObject waterSplashPrefab;
     [SerializeField] protected float waterFloodRate = 0.1f;
+    [SerializeField] protected string shipName;
+    [SerializeField] protected FactionType faction;
 
     protected float currentHealth;
     protected bool isSelected;
@@ -27,6 +28,8 @@ public class Ship : SeaEntityBase
     public bool IsSinking => isSinking;
     public IShipOwner ShipOwner => owner;
     public string ShipName => Name;
+    public string Name => shipName;
+    public FactionType Faction => faction;
 
     protected virtual void Awake()
     {
@@ -56,10 +59,9 @@ public class Ship : SeaEntityBase
                   $"- SelectionHandler: {selectionHandler != null}");
     }
 
-    protected override void Start()
+    protected virtual void Start()
     {
         Debug.Log($"[Ship] Start called on {gameObject.name}");
-        base.Start();
     }
 
     public virtual void Initialize(FactionType newFaction, string newName)
@@ -67,6 +69,16 @@ public class Ship : SeaEntityBase
         Debug.Log($"[Ship] Initializing {gameObject.name} with faction {newFaction} and name {newName}");
         SetFaction(newFaction);
         SetName(newName);
+    }
+
+    public void SetName(string newName)
+    {
+        shipName = newName;
+    }
+
+    public void SetFaction(FactionType newFaction)
+    {
+        faction = newFaction;
     }
 
     public virtual void SetOwner(IShipOwner newOwner)
@@ -157,9 +169,8 @@ public class Ship : SeaEntityBase
         ShipManager.Instance?.OnShipDestroyed(this);
     }
 
-    protected override void OnDestroy()
+    protected virtual void OnDestroy()
     {
-        base.OnDestroy();
         OnShipDestroyed = null;
     }
 
