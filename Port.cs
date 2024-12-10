@@ -1,7 +1,6 @@
 using UnityEngine;
-using CSM.Base;
 
-public class Port : SeaEntityBase
+public class Port : MonoBehaviour
 {
     [SerializeField]
     private FactionType owningFaction = FactionType.None;
@@ -29,10 +28,8 @@ public class Port : SeaEntityBase
         }
     }
 
-    protected override void Start()
+    protected virtual void Start()
     {
-        base.Start();
-        
         // Register with initial faction
         if (owningFaction != FactionType.None && FactionManager.Instance != null)
         {
