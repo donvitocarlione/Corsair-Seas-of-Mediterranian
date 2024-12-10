@@ -78,12 +78,31 @@ public class Ship : MonoBehaviour
 
     public void SetFaction(FactionType newFaction)
     {
+        // Only allow faction changes if the ship has no owner
+        if (owner != null)
+        {
+            Debug.LogWarning($"[Ship] Attempted to change faction of {shipName} while owned by {owner.GetType().Name}. Faction changes must be done through the owner.");
+            return;
+        }
+
+        Debug.Log($"[Ship] Setting faction for {shipName} from {faction} to {newFaction}");
         faction = newFaction;
     }
 
     public virtual void SetOwner(IShipOwner newOwner)
     {
         Debug.Log($"[Ship] Setting owner for {gameObject.name} to {(newOwner != null ? newOwner.GetType().Name : "null")}");
+        
+        if (newOwner != null)
+        {
+            // Validate faction matches owner's faction
+            if (newOwner.Faction != faction)
+            {
+                Debug.Log($"[Ship] Updating faction from {faction} to match new owner's faction {newOwner.Faction}");
+                faction = newOwner.Faction;
+            }
+        }
+
         if (owner != null && !ReferenceEquals(owner, newOwner))
         {
             owner.RemoveShip(this);
