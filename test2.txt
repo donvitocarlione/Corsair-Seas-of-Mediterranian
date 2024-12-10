@@ -1,1 +1,1 @@
-{"content": "VGVzdGluZyBjcmVhdGVfb3JfdXBkYXRlX2ZpbGUgY29tbWFuZA==", "encoding": "base64"}
+Testing push_files command instead
