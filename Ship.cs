@@ -20,6 +20,7 @@ public class Ship : MonoBehaviour
     protected Rigidbody shipRigidbody;
     protected Buoyancy buoyancyComponent;
     protected ShipMovement movementComponent;
+    protected ShipSelectionHandler selectionHandler;
 
     public event UnityAction OnShipDestroyed;
 
@@ -37,6 +38,7 @@ public class Ship : MonoBehaviour
         shipRigidbody = GetComponent<Rigidbody>();
         buoyancyComponent = GetComponent<Buoyancy>();
         movementComponent = GetComponent<ShipMovement>();
+        selectionHandler = GetComponent<ShipSelectionHandler>();
         currentHealth = maxHealth;
 
         var collider = GetComponent<Collider>();
@@ -45,7 +47,6 @@ public class Ship : MonoBehaviour
             Debug.LogError($"[Ship] No Collider found on {gameObject.name}");
         }
 
-        var selectionHandler = GetComponent<ShipSelectionHandler>();
         if (selectionHandler == null)
         {
             Debug.LogError($"[Ship] No ShipSelectionHandler found on {gameObject.name}");
@@ -62,6 +63,11 @@ public class Ship : MonoBehaviour
     protected virtual void Start()
     {
         Debug.Log($"[Ship] Start called on {gameObject.name}");
+        // Ensure selection indicator starts hidden
+        if (selectionHandler != null)
+        {
+            selectionHandler.Deselect();
+        }
     }
 
     public virtual void Initialize(FactionType newFaction, string newName)
@@ -121,12 +127,20 @@ public class Ship : MonoBehaviour
     {
         Debug.Log($"[Ship] Selecting {gameObject.name}");
         isSelected = true;
+        if (selectionHandler != null)
+        {
+            selectionHandler.Select();
+        }
     }
 
     public virtual void Deselect()
     {
         Debug.Log($"[Ship] Deselecting {gameObject.name}");
         isSelected = false;
+        if (selectionHandler != null)
+        {
+            selectionHandler.Deselect();
+        }
     }
 
     public virtual void TakeDamage(float damage)
