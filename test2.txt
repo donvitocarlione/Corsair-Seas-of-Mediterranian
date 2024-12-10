@@ -1,1 +1,1 @@
-Testing create_or_update_file command
+{"content": "VGVzdGluZyBjcmVhdGVfb3JfdXBkYXRlX2ZpbGUgY29tbWFuZA==", "encoding": "base64"}
