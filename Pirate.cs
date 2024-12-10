@@ -130,8 +130,7 @@ public class Pirate : MonoBehaviour, IShipOwner
         if (!ownedShips.Contains(ship))
         {
             ownedShips.Add(ship);
-            ship.SetOwner(this);
-            ship.Initialize(Faction, ship.ShipName);
+            ship.SetOwner(this);  // This will update the ship's faction automatically
             Debug.Log($"Added ship {ship.ShipName} to {GetType().Name}'s fleet");
         }
     }
@@ -185,14 +184,15 @@ public class Pirate : MonoBehaviour, IShipOwner
     {
         Debug.Log($"{GetType().Name}'s faction changed to {newFaction}");
 
-        if (ownedShips == null) return;
-        
-        // Update faction for all owned ships
-        foreach (var ship in ownedShips.ToArray())
+        // Update all owned ships to match the new faction
+        if (ownedShips != null)
         {
-            if (ship != null)
+            foreach (var ship in ownedShips)
             {
-                ship.Initialize(newFaction, ship.ShipName);
+                if (ship != null)
+                {
+                    ship.SetOwner(this);  // This will update the ship's faction automatically
+                }
             }
         }
     }
