@@ -1,10 +1,11 @@
 using UnityEngine;
 using System.Collections.Generic;
-using CSM.Base;
 
 [AddComponentMenu("Game/Pirate")]
-public class Pirate : SeaEntityBase, IShipOwner
+public class Pirate : MonoBehaviour, IShipOwner
 {
+    [SerializeField] protected string pirateName;
+    [SerializeField] protected FactionType faction;
     protected List<Ship> ownedShips;
     [SerializeField, Range(0f, 100f), Tooltip("Pirate's reputation affects trading and diplomacy")]
     protected float reputation = 50f;
@@ -15,14 +16,16 @@ public class Pirate : SeaEntityBase, IShipOwner
     private const float MIN_REPUTATION = 0f;
     private const float MAX_REPUTATION = 100f;
 
+    public string Name => pirateName;
+    public FactionType Faction => faction;
+
     protected virtual void Awake()
     {
         ownedShips = new List<Ship>();
     }
     
-    protected override void Start()
+    protected virtual void Start()
     {
-        base.Start();
         // Only register if not the player (player will be registered by ShipManager)
         if (!(this is Player))
         {
@@ -30,9 +33,8 @@ public class Pirate : SeaEntityBase, IShipOwner
         }
     }
 
-    protected override void OnDestroy()
+    protected virtual void OnDestroy()
     {
-        base.OnDestroy();
         if (isInitialized)
         {
             UnregisterFromFaction();
@@ -62,16 +64,21 @@ public class Pirate : SeaEntityBase, IShipOwner
         wealth = Mathf.Max(0f, wealth + amount);
     }
 
-    public override void SetFaction(FactionType newFaction)
+    public void SetName(string newName)
     {
-        if (!isInitialized || !object.Equals(newFaction, Faction))
+        pirateName = newName;
+    }
+
+    public void SetFaction(FactionType newFaction)
+    {
+        if (!isInitialized || faction != newFaction)
         {
             if (isInitialized)
             {
                 UnregisterFromFaction();
             }
             
-            base.SetFaction(newFaction);
+            faction = newFaction;
             RegisterWithFaction();
             isInitialized = true;
             HandleFactionChanged(newFaction);
