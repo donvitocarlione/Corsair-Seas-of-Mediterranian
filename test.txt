@@ -1,1 +1,5 @@
-VGVzdGluZyBBUEkgZW5jb2Rpbmc=
+Ship Selection System Complete
+- Working selection indicator
+- Improved highlighting system
+- Fixed initialization issues
+- Added customizable visual effects
