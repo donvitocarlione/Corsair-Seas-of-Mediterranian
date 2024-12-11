@@ -22,9 +22,9 @@ public class Player : Pirate
     }
 
     private Ship selectedShip;
-    [SerializeField, Tooltip("Reference to the InputManager component")]
+    [SerializeField]
     private InputManager inputManager;
-    [SerializeField, Tooltip("Reference to the UI component for ship selection")]
+    [SerializeField]
     private ShipSelectionUI shipSelectionUI;
     
     public event System.Action<Ship> OnShipSelected;
@@ -49,8 +49,17 @@ public class Player : Pirate
     protected override void Start()
     {
         Debug.Log("[Player] Start called");
-        base.Start(); // Ensure Pirate initialization is performed
+        base.Start();
         InitializeServices();
+
+        // Set faction for existing ships
+        foreach (var ship in GetOwnedShips())
+        {
+            if (ship != null)
+            {
+                ship.SetOwner(this);
+            }
+        }
     }
 
     private void InitializeServices()
@@ -101,18 +110,19 @@ public class Player : Pirate
             return;
         }
 
-        Ship previousShip = selectedShip;
-        
+        // Deselect previous ship
         if (selectedShip != null)
         {
             selectedShip.Deselect();
             OnShipDeselected?.Invoke(selectedShip);
         }
 
+        // Select new ship
         selectedShip = ship;
         ship.Select();
         OnShipSelected?.Invoke(ship);
 
+        // Update UI and input manager
         shipSelectionUI?.UpdateSelection(ship);
         inputManager?.OnShipSelected(ship);
 
@@ -127,11 +137,14 @@ public class Player : Pirate
             return;
         }
 
+        // Set ownership before adding to list
+        ship.SetOwner(this);
         base.AddShip(ship);
-        Debug.Log($"[Player] Added ship to fleet: {ship.ShipName}");
         
+        Debug.Log($"[Player] Added ship to fleet: {ship.ShipName}");
         shipSelectionUI?.UpdateShipList(GetOwnedShips());
 
+        // Auto-select if this is our only ship
         if (selectedShip == null && ownedShips.Count == 1)
         {
             SelectShip(ship);
@@ -158,51 +171,13 @@ public class Player : Pirate
         
         shipSelectionUI?.UpdateShipList(GetOwnedShips());
 
+        // Auto-select another ship if available
         if (selectedShip == null && ownedShips.Count > 0)
         {
             SelectShip(ownedShips[0]);
         }
     }
 
-    public void SelectNextShip()
-    {
-        if (ownedShips.Count == 0) return;
-        
-        int currentIndex = selectedShip != null ? ownedShips.IndexOf(selectedShip) : -1;
-        int nextIndex = (currentIndex + 1) % ownedShips.Count;
-        
-        SelectShip(ownedShips[nextIndex]);
-    }
-    
-    public void MoveShipsInFormation(Vector3 targetPosition)
-    {
-        if (ownedShips.Count == 0) return;
-        
-        const float horizontalSpacing = 5f;
-        const float verticalSpacing = 5f;
-        const int shipsPerRow = 3;
-        
-        for (int i = 0; i < ownedShips.Count; i++)
-        {
-            Ship ship = ownedShips[i];
-            if (ship == null) continue;
-
-            int row = i / shipsPerRow;
-            int col = i % shipsPerRow;
-
-            Vector3 offset = new Vector3(
-                col * horizontalSpacing - (horizontalSpacing * (shipsPerRow - 1) / 2f),
-                0f,
-                row * -verticalSpacing
-            );
-            
-            if (ship.TryGetComponent<ShipMovement>(out var movement))
-            {
-                movement.SetTargetPosition(targetPosition + offset);
-            }
-        }
-    }
-    
     protected override void OnDestroy()
     {
         if (instance == this)
