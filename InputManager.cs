@@ -25,25 +25,25 @@ public class InputManager : MonoBehaviour
         if (shipLayerMask == 0)
         {
             shipLayerMask = LayerMask.GetMask("Ship");
-            Debug.LogWarning("[InputManager] Ship layer mask not set. Using 'Ship' layer. Value: " + shipLayerMask.value);
+            Debug.Log("[InputManager] Setting default Ship layer mask: " + shipLayerMask.value);
         }
 
         if (groundLayerMask == 0)
         {
-            groundLayerMask = LayerMask.GetMask("Water", "Terrain"); // Updated to include Water and Terrain
-            Debug.LogWarning("[InputManager] Ground layer mask not set. Using 'Water' and 'Terrain' layers. Value: " + groundLayerMask.value);
+            groundLayerMask = LayerMask.GetMask("Water", "Terrain");
+            Debug.Log("[InputManager] Setting default Ground layer mask: " + groundLayerMask.value);
         }
         
-        Debug.Log("[InputManager] Initialization complete");
+        Debug.Log("[InputManager] Layer masks - Ship: " + shipLayerMask.value + ", Ground: " + groundLayerMask.value);
     }
 
     public void OnShipSelected(Ship ship)
     {
         if (ship == null)
         {
-            Debug.Log("[InputManager] Deselecting current ship");
             if (selectedShip != null)
             {
+                Debug.Log($"[InputManager] Deselecting ship: {selectedShip.ShipName}");
                 selectedShip.Deselect();
                 selectedShip = null;
             }
@@ -53,19 +53,24 @@ public class InputManager : MonoBehaviour
         // Validate ship can be selected
         if (!(ship.ShipOwner is Player))
         {
-            Debug.LogWarning("[InputManager] Cannot select ship - not owned by player");
+            Debug.LogWarning($"[InputManager] Cannot select ship {ship.ShipName} - not owned by player");
             return;
         }
 
-        // Deselect previous ship if any
+        // Only deselect if selecting a different ship
         if (selectedShip != null && selectedShip != ship)
         {
+            Debug.Log($"[InputManager] Deselecting previous ship: {selectedShip.ShipName}");
             selectedShip.Deselect();
         }
-        
-        selectedShip = ship;
-        ship.Select();
-        Debug.Log($"[InputManager] Selected ship: {ship.ShipName}");
+
+        // Don't reselect if it's already selected
+        if (selectedShip != ship)
+        {
+            selectedShip = ship;
+            ship.Select();
+            Debug.Log($"[InputManager] Selected new ship: {ship.ShipName}");
+        }
     }
 
     private void Update()
@@ -78,21 +83,12 @@ public class InputManager : MonoBehaviour
         // Left click for selection
         if (Input.GetMouseButtonDown(0))
         {
-            Debug.Log("[InputManager] Left click detected");
             HandleSelection();
         }
         // Right click for movement
-        else if (Input.GetMouseButtonDown(1))
+        else if (Input.GetMouseButtonDown(1) && selectedShip != null)
         {
-            Debug.Log("[InputManager] Right click detected");
-            if (selectedShip != null)
-            {
-                HandleMovement();
-            }
-            else
-            {
-                Debug.LogWarning("[InputManager] No ship selected for movement");
-            }
+            HandleMovement();
         }
     }
 
@@ -101,10 +97,12 @@ public class InputManager : MonoBehaviour
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
 
-        Debug.Log($"[InputManager] Attempting selection raycast with layer mask: {shipLayerMask.value}");
+        Debug.DrawRay(ray.origin, ray.direction * 100f, Color.red, 1f);
+        Debug.Log($"[InputManager] Casting selection ray with mask {shipLayerMask.value}");
+
         if (Physics.Raycast(ray, out hit, Mathf.Infinity, shipLayerMask))
         {
-            Debug.Log($"[InputManager] Hit object: {hit.collider.gameObject.name}");
+            Debug.Log($"[InputManager] Hit object: {hit.collider.gameObject.name} on layer {hit.collider.gameObject.layer}");
             Ship ship = hit.collider.GetComponent<Ship>();
             if (ship != null)
             {
@@ -112,40 +110,51 @@ public class InputManager : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("[InputManager] Hit object does not have Ship component");
+                Debug.LogWarning($"[InputManager] Hit object {hit.collider.gameObject.name} has no Ship component");
             }
         }
         else
         {
-            Debug.Log("[InputManager] No ship hit - deselecting");
-            OnShipSelected(null);
+            Debug.Log("[InputManager] Selection raycast hit nothing");
+            // Only deselect if we didn't hit a ship - this prevents accidental deselection
+            if (!EventSystem.current.IsPointerOverGameObject())
+            {
+                OnShipSelected(null);
+            }
         }
     }
 
     private void HandleMovement()
     {
-        Debug.Log("[InputManager] Attempting to move selected ship");
+        if (selectedShip == null)
+        {
+            Debug.LogWarning("[InputManager] No ship selected for movement");
+            return;
+        }
+
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
 
-        Debug.Log($"[InputManager] Attempting movement raycast with layer mask: {groundLayerMask.value}");
+        Debug.DrawRay(ray.origin, ray.direction * 100f, Color.blue, 1f);
+        Debug.Log($"[InputManager] Casting movement ray with mask {groundLayerMask.value}");
+
         if (Physics.Raycast(ray, out hit, Mathf.Infinity, groundLayerMask))
         {
-            Debug.Log($"[InputManager] Found movement target at {hit.point}");
+            Debug.Log($"[InputManager] Movement raycast hit {hit.collider.gameObject.name} at {hit.point}");
             var movement = selectedShip.GetComponent<ShipMovement>();
             if (movement != null)
             {
-                Debug.Log($"[InputManager] Moving {selectedShip.ShipName} to {hit.point}");
                 movement.SetTargetPosition(hit.point);
+                Debug.Log($"[InputManager] Set movement target for {selectedShip.ShipName} to {hit.point}");
             }
             else
             {
-                Debug.LogError($"[InputManager] Selected ship {selectedShip.ShipName} has no ShipMovement component!");
+                Debug.LogError($"[InputManager] Ship {selectedShip.ShipName} has no ShipMovement component!");
             }
         }
         else
         {
-            Debug.LogWarning($"[InputManager] No valid movement target found. Check if Water/Terrain layers are set up correctly.");
+            Debug.LogWarning("[InputManager] Movement raycast hit nothing");
         }
     }
 
@@ -156,14 +165,13 @@ public class InputManager : MonoBehaviour
 
     private void OnValidate()
     {
-        // Help ensure proper layer masks are set in the inspector
         if (shipLayerMask == 0)
         {
-            Debug.LogWarning("Ship layer mask not set in InputManager. Please set it in the inspector.");
+            shipLayerMask = LayerMask.GetMask("Ship");
         }
         if (groundLayerMask == 0)
         {
-            Debug.LogWarning("Ground layer mask not set in InputManager. Please set it in the inspector.");
+            groundLayerMask = LayerMask.GetMask("Water", "Terrain");
         }
     }
 }
