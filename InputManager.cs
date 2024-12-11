@@ -12,25 +12,29 @@ public class InputManager : MonoBehaviour
 
     private void Start()
     {
+        Debug.Log("[InputManager] Starting initialization");
         mainCamera = Camera.main;
         if (mainCamera == null)
         {
-            Debug.LogError("Main camera not found!");
+            Debug.LogError("[InputManager] Main camera not found! Ensure camera has MainCamera tag.");
             return;
         }
+        Debug.Log("[InputManager] Main camera found successfully");
 
         // Setup default layer masks if not set
         if (shipLayerMask == 0)
         {
             shipLayerMask = LayerMask.GetMask("Ship");
-            Debug.LogWarning("Ship layer mask not set. Using 'Ship' layer.");
+            Debug.LogWarning("[InputManager] Ship layer mask not set. Using 'Ship' layer. Value: " + shipLayerMask.value);
         }
 
         if (groundLayerMask == 0)
         {
             groundLayerMask = LayerMask.GetMask("Water", "Terrain"); // Updated to include Water and Terrain
-            Debug.LogWarning("Ground layer mask not set. Using 'Water' and 'Terrain' layers.");
+            Debug.LogWarning("[InputManager] Ground layer mask not set. Using 'Water' and 'Terrain' layers. Value: " + groundLayerMask.value);
         }
+        
+        Debug.Log("[InputManager] Initialization complete");
     }
 
     public void OnShipSelected(Ship ship)
@@ -74,12 +78,21 @@ public class InputManager : MonoBehaviour
         // Left click for selection
         if (Input.GetMouseButtonDown(0))
         {
+            Debug.Log("[InputManager] Left click detected");
             HandleSelection();
         }
         // Right click for movement
-        else if (Input.GetMouseButtonDown(1) && selectedShip != null)
+        else if (Input.GetMouseButtonDown(1))
         {
-            HandleMovement();
+            Debug.Log("[InputManager] Right click detected");
+            if (selectedShip != null)
+            {
+                HandleMovement();
+            }
+            else
+            {
+                Debug.LogWarning("[InputManager] No ship selected for movement");
+            }
         }
     }
 
@@ -88,34 +101,51 @@ public class InputManager : MonoBehaviour
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
 
+        Debug.Log($"[InputManager] Attempting selection raycast with layer mask: {shipLayerMask.value}");
         if (Physics.Raycast(ray, out hit, Mathf.Infinity, shipLayerMask))
         {
+            Debug.Log($"[InputManager] Hit object: {hit.collider.gameObject.name}");
             Ship ship = hit.collider.GetComponent<Ship>();
             if (ship != null)
             {
                 OnShipSelected(ship);
             }
+            else
+            {
+                Debug.LogWarning("[InputManager] Hit object does not have Ship component");
+            }
         }
         else
         {
-            // Clicked nothing - deselect
+            Debug.Log("[InputManager] No ship hit - deselecting");
             OnShipSelected(null);
         }
     }
 
     private void HandleMovement()
     {
+        Debug.Log("[InputManager] Attempting to move selected ship");
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
 
+        Debug.Log($"[InputManager] Attempting movement raycast with layer mask: {groundLayerMask.value}");
         if (Physics.Raycast(ray, out hit, Mathf.Infinity, groundLayerMask))
         {
+            Debug.Log($"[InputManager] Found movement target at {hit.point}");
             var movement = selectedShip.GetComponent<ShipMovement>();
             if (movement != null)
             {
+                Debug.Log($"[InputManager] Moving {selectedShip.ShipName} to {hit.point}");
                 movement.SetTargetPosition(hit.point);
-                Debug.Log($"[InputManager] Moving {selectedShip.ShipName} to position: {hit.point}");
             }
+            else
+            {
+                Debug.LogError($"[InputManager] Selected ship {selectedShip.ShipName} has no ShipMovement component!");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[InputManager] No valid movement target found. Check if Water/Terrain layers are set up correctly.");
         }
     }
 
