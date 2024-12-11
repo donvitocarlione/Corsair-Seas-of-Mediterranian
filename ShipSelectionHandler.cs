@@ -20,16 +20,7 @@ public class ShipSelectionHandler : MonoBehaviour
 
     private void OnEnable()
     {
-        if (!isInitialized)
-        {
-            InitializeHandler();
-        }
-        
-        // Ensure selection indicator starts hidden
-        if (selectionIndicator != null)
-        {
-            selectionIndicator.SetActive(false);
-        }
+        InitializeHandler();
     }
     
     private void Awake()
@@ -39,8 +30,7 @@ public class ShipSelectionHandler : MonoBehaviour
 
     private void InitializeHandler()
     {
-        if (isInitialized) return;
-
+        // Always try to initialize
         Debug.Log($"[ShipSelectionHandler] Initializing handler for {gameObject.name}");
         
         // Get ship reference
@@ -51,32 +41,33 @@ public class ShipSelectionHandler : MonoBehaviour
             return;
         }
 
-        // Find all renderers in the ship hierarchy
-        FindTargetRenderers();
-
-        // Store original materials
-        StoreOriginalMaterials();
+        // Find all renderers in the ship hierarchy if not already found
+        if (targetRenderers == null || targetRenderers.Length == 0)
+        {
+            FindTargetRenderers();
+            StoreOriginalMaterials();
+        }
 
         // Ensure this object is on the correct layer
         if (gameObject.layer != LayerMask.NameToLayer("Ship"))
         {
             SetLayerRecursively(gameObject, LayerMask.NameToLayer("Ship"));
-            Debug.Log($"[ShipSelectionHandler] Set layer to Ship for {gameObject.name}");
         }
 
-        // Validate selected material
-        if (selectedMaterial == null)
+        // Hide selection indicator at start
+        if (selectionIndicator != null)
         {
-            Debug.LogError($"[ShipSelectionHandler] Selected material is not assigned on {gameObject.name}");
+            selectionIndicator.SetActive(false);
         }
 
         isInitialized = true;
+        Debug.Log($"[ShipSelectionHandler] Initialization complete for {gameObject.name}");
     }
 
     private void FindTargetRenderers()
     {
         // Get all mesh renderers in children
-        targetRenderers = GetComponentsInChildren<MeshRenderer>();
+        targetRenderers = GetComponentsInChildren<MeshRenderer>(true); // Include inactive objects
         
         if (targetRenderers == null || targetRenderers.Length == 0)
         {
@@ -84,12 +75,7 @@ public class ShipSelectionHandler : MonoBehaviour
             return;
         }
 
-        // Log found renderers for debugging
-        Debug.Log($"[ShipSelectionHandler] Found {targetRenderers.Length} renderers in {gameObject.name}:");
-        for (int i = 0; i < targetRenderers.Length; i++)
-        {
-            Debug.Log($"- Renderer {i}: {targetRenderers[i].name}");
-        }
+        Debug.Log($"[ShipSelectionHandler] Found {targetRenderers.Length} renderers in {gameObject.name}");
     }
 
     private void StoreOriginalMaterials()
@@ -101,10 +87,8 @@ public class ShipSelectionHandler : MonoBehaviour
         {
             if (targetRenderers[i] != null)
             {
-                // Create a new instance of the material to avoid modifying the shared material
-                originalMaterials[i] = new Material(targetRenderers[i].sharedMaterial);
-                targetRenderers[i].material = originalMaterials[i];
-                Debug.Log($"[ShipSelectionHandler] Stored original material for {targetRenderers[i].name}");
+                // Store a reference to the original shared material
+                originalMaterials[i] = targetRenderers[i].sharedMaterial;
             }
         }
     }
@@ -129,23 +113,34 @@ public class ShipSelectionHandler : MonoBehaviour
         }
 
         Debug.Log($"[ShipSelectionHandler] Selecting ship {gameObject.name}");
+        if (selectionIndicator != null)
+        {
+            selectionIndicator.SetActive(true);
+        }
         ApplySelectedMaterial();
-        ShowSelectionIndicator(true);
         return true;
     }
 
     public void Deselect()
     {
         Debug.Log($"[ShipSelectionHandler] Deselecting ship {gameObject.name}");
+        if (selectionIndicator != null)
+        {
+            selectionIndicator.SetActive(false);
+        }
         RestoreOriginalMaterials();
-        ShowSelectionIndicator(false);
     }
 
     private bool CanBeSelected()
     {
-        if (!isInitialized || shipReference == null)
+        if (!isInitialized)
         {
-            Debug.LogError($"[ShipSelectionHandler] Cannot select - not properly initialized on {gameObject.name}");
+            InitializeHandler(); // Try to initialize if not done
+        }
+
+        if (shipReference == null)
+        {
+            Debug.LogError($"[ShipSelectionHandler] Cannot select - shipReference is null on {gameObject.name}");
             return false;
         }
 
@@ -161,12 +156,6 @@ public class ShipSelectionHandler : MonoBehaviour
             return false;
         }
 
-        if (shipReference.IsSinking)
-        {
-            Debug.LogWarning($"[ShipSelectionHandler] Cannot select - ship is sinking {gameObject.name}");
-            return false;
-        }
-
         return true;
     }
 
@@ -174,14 +163,14 @@ public class ShipSelectionHandler : MonoBehaviour
     {
         if (selectedMaterial == null)
         {
-            Debug.LogError($"[ShipSelectionHandler] Cannot apply selection - selected material is null on {gameObject.name}");
+            Debug.LogError($"[ShipSelectionHandler] Selected material is not assigned on {gameObject.name}");
             return;
         }
 
         if (targetRenderers == null)
         {
-            Debug.LogError($"[ShipSelectionHandler] Cannot apply selection - no target renderers found on {gameObject.name}");
-            return;
+            FindTargetRenderers();
+            if (targetRenderers == null) return;
         }
 
         foreach (var renderer in targetRenderers)
@@ -189,70 +178,20 @@ public class ShipSelectionHandler : MonoBehaviour
             if (renderer != null)
             {
                 renderer.material = selectedMaterial;
-                Debug.Log($"[ShipSelectionHandler] Applied selected material to {renderer.name}");
             }
         }
     }
 
     private void RestoreOriginalMaterials()
     {
-        if (targetRenderers == null || originalMaterials == null)
-        {
-            Debug.LogError($"[ShipSelectionHandler] Cannot restore materials - references are null on {gameObject.name}");
-            return;
-        }
+        if (targetRenderers == null || originalMaterials == null) return;
 
         for (int i = 0; i < targetRenderers.Length; i++)
         {
             if (targetRenderers[i] != null && originalMaterials[i] != null)
             {
                 targetRenderers[i].material = originalMaterials[i];
-                Debug.Log($"[ShipSelectionHandler] Restored original material for {targetRenderers[i].name}");
             }
-        }
-    }
-
-    private void ShowSelectionIndicator(bool show)
-    {
-        if (selectionIndicator != null)
-        {
-            Debug.Log($"[ShipSelectionHandler] {(show ? "Showing" : "Hiding")} selection indicator for {gameObject.name}");
-            selectionIndicator.SetActive(show);
-        }
-        else
-        {
-            Debug.LogWarning($"[ShipSelectionHandler] Selection indicator is null on {gameObject.name}");
-        }
-    }
-
-    private void OnDestroy()
-    {
-        if (Application.isPlaying)
-        {
-            // Clean up materials to prevent memory leaks
-            if (originalMaterials != null)
-            {
-                foreach (var material in originalMaterials)
-                {
-                    if (material != null)
-                    {
-                        Destroy(material);
-                    }
-                }
-            }
-        }
-    }
-
-    private void OnValidate()
-    {
-        if (selectedMaterial == null)
-        {
-            Debug.LogWarning("Please assign a Selected Material in the inspector");
-        }
-
-        if (selectionIndicator == null)
-        {
-            Debug.LogWarning("Please assign a Selection Indicator in the inspector");
         }
     }
 }
