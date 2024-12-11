@@ -28,13 +28,17 @@ public class ShipMovement : MonoBehaviour
     private Quaternion targetRotation;
     private ShipState currentState = ShipState.Idle;
     private float currentSpeed = 0f;
-    private bool isMoving;
+    private bool _isMoving;
+
+    // Public property to access movement state
+    public bool IsMoving => _isMoving;
+    public ShipState CurrentState => currentState;
     
     public void SetTargetPosition(Vector3 position)
     {
         targetPosition = position;
         targetPosition.y = transform.position.y;  // Maintain current height
-        isMoving = true;
+        _isMoving = true;
         
         // Calculate rotation to face target
         Vector3 direction = (targetPosition - transform.position).normalized;
@@ -48,7 +52,7 @@ public class ShipMovement : MonoBehaviour
     
     public void StopMovement()
     {
-        isMoving = false;
+        _isMoving = false;
         currentSpeed = 0f;
         currentState = ShipState.Stopping;
     }
@@ -90,7 +94,7 @@ public class ShipMovement : MonoBehaviour
     
     private void HandleMovement()
     {
-        if (!isMoving) return;
+        if (!_isMoving) return;
         
         float distanceToTarget = Vector3.Distance(transform.position, targetPosition);
         
