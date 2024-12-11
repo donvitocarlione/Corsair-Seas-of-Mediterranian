@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine.Events;
 
 public class Ship : MonoBehaviour
@@ -12,10 +13,19 @@ public class Ship : MonoBehaviour
     [SerializeField] protected string shipName;
     [SerializeField] protected FactionType faction;
 
+    [Header("Combat Properties")]
+    [SerializeField] protected Transform[] portWeaponMounts;
+    [SerializeField] protected Transform[] starboardWeaponMounts;
+    [SerializeField] protected GameObject weaponPrefab;
+    [SerializeField] protected float combatRange = 50f;
+    [SerializeField] protected float armor = 1f;
+    [SerializeField] protected float criticalHitMultiplier = 2f;
+
     protected float currentHealth;
     protected bool isSelected;
     protected bool isSinking;
     protected IShipOwner owner;
+    protected List<Weapon> weapons = new List<Weapon>();
 
     protected Rigidbody shipRigidbody;
     protected Buoyancy buoyancyComponent;
@@ -23,6 +33,8 @@ public class Ship : MonoBehaviour
     protected ShipSelectionHandler selectionHandler;
 
     public event UnityAction OnShipDestroyed;
+    public event UnityAction<float> OnDamageTaken;
+    public event UnityAction<Ship> OnTargetAcquired;
 
     public float Health => currentHealth;
     public bool IsSelected => isSelected;
@@ -31,6 +43,8 @@ public class Ship : MonoBehaviour
     public string ShipName => Name;
     public string Name => shipName;
     public FactionType Faction => faction;
+    public float CombatRange => combatRange;
+    public List<Weapon> Weapons => weapons;
 
     protected virtual void Awake()
     {
@@ -41,18 +55,72 @@ public class Ship : MonoBehaviour
         selectionHandler = GetComponent<ShipSelectionHandler>();
         currentHealth = maxHealth;
 
-        // Ensure proper component setup
         ValidateComponents();
+        InitializeWeapons();
     }
 
     protected virtual void Start()
     {
         Debug.Log($"[Ship] Start called on {gameObject.name}");
-        // Ensure selection indicator starts hidden
         if (selectionHandler != null)
         {
             selectionHandler.Deselect();
         }
+    }
+
+    private void InitializeWeapons()
+    {
+        if (weaponPrefab == null)
+        {
+            Debug.LogWarning($"[Ship] No weapon prefab assigned to {gameObject.name}");
+            return;
+        }
+
+        InitializeWeaponSide(portWeaponMounts, "Port");
+        InitializeWeaponSide(starboardWeaponMounts, "Starboard");
+
+        if (weapons.Count > 0)
+        {
+            CombatSystem.Instance?.RegisterShip(this, weapons);
+        }
+    }
+
+    private void InitializeWeaponSide(Transform[] mounts, string side)
+    {
+        if (mounts == null) return;
+
+        foreach (var mount in mounts)
+        {
+            if (mount == null) continue;
+
+            GameObject weaponObj = Instantiate(weaponPrefab, mount.position, mount.rotation, mount);
+            weaponObj.name = $"{side}_Weapon_{weapons.Count + 1}";
+            
+            Weapon weapon = weaponObj.GetComponent<Weapon>();
+            if (weapon != null)
+            {
+                weapons.Add(weapon);
+                Debug.Log($"[Ship] Added {side} weapon to {gameObject.name}");
+            }
+        }
+    }
+
+    public virtual void FireAtTarget(Ship target)
+    {
+        if (target == null || target.Faction == this.Faction)
+            return;
+
+        OnTargetAcquired?.Invoke(target);
+        CombatSystem.Instance?.InitiateCombat(this, target);
+    }
+
+    public virtual bool CanEngageTarget(Ship target)
+    {
+        if (target == null || target.Faction == this.Faction)
+            return false;
+
+        float distance = Vector3.Distance(transform.position, target.transform.position);
+        return distance <= combatRange && !IsSinking && currentHealth > 0;
     }
 
     private void ValidateComponents()
@@ -72,19 +140,11 @@ public class Ship : MonoBehaviour
             Debug.Log($"[Ship] Added ShipSelectionHandler to {gameObject.name}");
         }
 
-        // Ensure ship is on correct layer
         if (gameObject.layer != LayerMask.NameToLayer("Ship"))
         {
             SetLayerRecursively(gameObject, LayerMask.NameToLayer("Ship"));
             Debug.Log($"[Ship] Set layer to Ship for {gameObject.name}");
         }
-
-        Debug.Log($"[Ship] Components check for {gameObject.name}:\n" +
-                  $"- Rigidbody: {shipRigidbody != null}\n" +
-                  $"- Buoyancy: {buoyancyComponent != null}\n" +
-                  $"- Movement: {movementComponent != null}\n" +
-                  $"- Collider: {collider != null}\n" +
-                  $"- SelectionHandler: {selectionHandler != null}");
     }
 
     private void SetLayerRecursively(GameObject obj, int layer)
@@ -111,14 +171,12 @@ public class Ship : MonoBehaviour
     {
         Debug.Log($"[Ship] Setting owner for {gameObject.name} to {(newOwner != null ? newOwner.GetType().Name : "null")}");
         
-        // First update the faction to match the new owner
         if (newOwner != null)
         {
             faction = newOwner.Faction;
             Debug.Log($"[Ship] Updated faction to {faction} to match new owner");
         }
 
-        // Then handle owner reassignment
         if (owner != null && !ReferenceEquals(owner, newOwner))
         {
             owner.RemoveShip(this);
@@ -126,7 +184,6 @@ public class Ship : MonoBehaviour
 
         owner = newOwner;
 
-        // Validate selection state after ownership change
         if (isSelected && !(owner is Player))
         {
             Deselect();
@@ -174,12 +231,30 @@ public class Ship : MonoBehaviour
     {
         if (isSinking) return;
 
-        currentHealth = Mathf.Max(0, currentHealth - damage);
+        float finalDamage = CalculateDamage(damage);
+        currentHealth = Mathf.Max(0, currentHealth - finalDamage);
+
+        OnDamageTaken?.Invoke(finalDamage);
 
         if (currentHealth <= sinkingThreshold && !isSinking)
         {
             StartSinking();
         }
+    }
+
+    protected virtual float CalculateDamage(float rawDamage)
+    {
+        // Apply armor reduction
+        float damageAfterArmor = rawDamage / armor;
+
+        // Random chance for critical hit
+        if (Random.value < 0.1f) // 10% chance
+        {
+            damageAfterArmor *= criticalHitMultiplier;
+            Debug.Log($"Critical hit on {shipName}!");
+        }
+
+        return damageAfterArmor;
     }
 
     protected virtual void StartSinking()
@@ -201,7 +276,7 @@ public class Ship : MonoBehaviour
                 buoyancyComponent != null)
             {
                 Vector3 splashPosition = transform.position + Random.insideUnitSphere * 2f;
-                splashPosition.y = buoyancyComponent.WaterLevel; // Updated to use the new property
+                splashPosition.y = buoyancyComponent.WaterLevel;
                 Instantiate(waterSplashPrefab, splashPosition, Quaternion.identity);
             }
 
@@ -232,6 +307,8 @@ public class Ship : MonoBehaviour
     protected virtual void OnDestroy()
     {
         OnShipDestroyed = null;
+        OnDamageTaken = null;
+        OnTargetAcquired = null;
     }
 
     protected virtual void OnValidate()
@@ -246,6 +323,18 @@ public class Ship : MonoBehaviour
         {
             maxHealth = 100f;
             Debug.LogWarning("Adjusted max health to default value (100)");
+        }
+
+        if (armor <= 0)
+        {
+            armor = 1f;
+            Debug.LogWarning("Adjusted armor to default value (1)");
+        }
+
+        if (combatRange <= 0)
+        {
+            combatRange = 50f;
+            Debug.LogWarning("Adjusted combat range to default value (50)");
         }
     }
 }
