@@ -3,190 +3,105 @@ using UnityEngine;
 public class Buoyancy : MonoBehaviour
 {
     [Header("Buoyancy Settings")]
-    public float waterDensity = 1000f;
-    [SerializeField] private float waterLevelY = 0f;
-    public float buoyancyForce = 15f;
-    public float waterDrag = 2f;
-    public float waterAngularDrag = 2f;
-    
-    [Header("Advanced Settings")]
-    public float sideResistance = 3f;  // Resistance to sideways movement
-    public float turningResistance = 2f;  // Resistance to rotation
-    public bool useWaves = true;
-    public float waveHeight = 0.5f;
-    public float waveFrequency = 1f;
-    
-    [Header("Stabilization")]
-    public float rollStability = 0.3f;  // How strongly the ship tries to stay upright
-    public float pitchStability = 0.2f;  // How strongly the ship resists pitch changes
-    
-    [Header("Debug Info")]
-    public float boatSubmergedPercentage = 0f;
-    public bool isInWater;
-    public Vector3 waterMovement;
-    
-    private Rigidbody rb;
-    private Collider boatCollider;
-    private float initialDrag;
-    private float initialAngularDrag;
-    private float timeOffset;
+    public float waterDensity = 1.5f;
+    public float waterLevel = 0f;
+    public float buoyancyForce = 50f;  // Reduced from 100
+    public float waterDrag = 1f;        // Reduced from 2
+    public float waterAngularDrag = 1f; // Reduced from 2
 
-    // Public property to access water level
-    public float WaterLevel => waterLevelY;
-    
+    [Header("Advanced Settings")]
+    public float sideResistance = 3f;
+    public float turningResistance = 2f;
+    public bool useWaves = true;
+    public float waveHeight = 0.2f;     // Reduced from 0.5
+    public float waveFrequency = 1f;
+
+    [Header("Stabilization")]
+    public float rollStability = 0.3f;
+    public float pitchStability = 0.2f;
+
+    [Header("Debug Info")]
+    public float boatSubmergencePercentage = 10f;
+    public bool isInWater = true;
+    public Vector3 waterMovement = Vector3.zero;
+
+    private Rigidbody rb;
+    private float originalDrag;
+    private float originalAngularDrag;
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        boatCollider = GetComponent<Collider>();
-        
         if (rb == null)
         {
-            Debug.LogError("Ship needs a Rigidbody!");
+            Debug.LogError("Buoyancy requires a Rigidbody!");
             enabled = false;
             return;
         }
-        
-        if (boatCollider == null)
-        {
-            Debug.LogError("Ship needs a collider!");
-            enabled = false;
-            return;
-        }
-        
-        // Store initial values
-        initialDrag = rb.linearDamping;
-        initialAngularDrag = rb.angularDamping;
-        
-        // Set recommended Rigidbody settings
-        rb.mass = 1000f; // 1 ton
-        rb.useGravity = true;
-        
-        // Allow some rotation for more realistic movement
-        rb.constraints = RigidbodyConstraints.None;
-        
-        // Random offset for wave variation
-        timeOffset = Random.Range(0f, 100f);
+
+        // Store original values
+        originalDrag = rb.drag;
+        originalAngularDrag = rb.angularDrag;
+
+        // Set initial rigidbody properties
+        rb.drag = waterDrag;
+        rb.angularDrag = waterAngularDrag;
     }
-    
+
     void FixedUpdate()
     {
-        UpdateWaterLevel();
-        
-        // Calculate submerged percentage
-        boatSubmergedPercentage = CalculateSubmergedPercentage();
-        isInWater = boatSubmergedPercentage > 0;
-        
-        if (isInWater)
-        {
-            ApplyBuoyancyForce();
-            ApplyWaterResistance();
-            ApplyStabilizationForces();
-        }
-        else
-        {
-            // Reset drag when out of water
-            rb.linearDamping = initialDrag;
-            rb.angularDamping = initialAngularDrag;
-        }
-    }
-    
-    void UpdateWaterLevel()
-    {
+        if (!isInWater) return;
+
+        // Calculate wave offset
+        float waveOffset = 0f;
         if (useWaves)
         {
-            float waveFactor = Mathf.Sin((Time.time + timeOffset) * waveFrequency);
-            waterLevelY = waveFactor * waveHeight;
+            waveOffset = Mathf.Sin(Time.time * waveFrequency) * waveHeight;
         }
+
+        // Calculate buoyancy force
+        float waterHeightWithWaves = waterLevel + waveOffset;
+        float submergenceDepth = waterHeightWithWaves - transform.position.y;
+        float submergencePercentage = Mathf.Clamp01(submergenceDepth / boatSubmergencePercentage);
+
+        // Apply buoyancy force
+        Vector3 buoyancyVector = Vector3.up * buoyancyForce * submergencePercentage;
+        rb.AddForce(buoyancyVector, ForceMode.Force);
+
+        // Apply stabilization
+        ApplyStabilization();
+
+        // Store current water movement for debugging
+        waterMovement = rb.velocity;
     }
-    
-    void ApplyBuoyancyForce()
-    {
-        // Calculate volume-based buoyancy force
-        float shipVolume = boatCollider.bounds.size.x * boatCollider.bounds.size.y * boatCollider.bounds.size.z;
-        float submeredVolume = shipVolume * boatSubmergedPercentage;
-        float forceMagnitude = buoyancyForce * submeredVolume * waterDensity * -Physics.gravity.y;
-        
-        // Calculate center of buoyancy
-        Vector3 centerOfBuoyancy = CalculateCenterOfBuoyancy();
-        
-        // Apply buoyant force
-        Vector3 buoyantForce = Vector3.up * forceMagnitude;
-        rb.AddForceAtPosition(buoyantForce, centerOfBuoyancy, ForceMode.Force);
-    }
-    
-    Vector3 CalculateCenterOfBuoyancy()
-    {
-        // Calculate a more accurate center of buoyancy based on orientation
-        Vector3 center = boatCollider.bounds.center;
-        float pitchFactor = Vector3.Dot(transform.forward, Vector3.up);
-        float rollFactor = Vector3.Dot(transform.right, Vector3.up);
-        
-        // Adjust center based on orientation
-        center += transform.right * (rollFactor * boatCollider.bounds.size.x * 0.15f);
-        center += transform.forward * (pitchFactor * boatCollider.bounds.size.z * 0.15f);
-        
-        // Lower center of buoyancy for better stability
-        center.y = Mathf.Lerp(boatCollider.bounds.min.y, boatCollider.bounds.center.y, 0.4f);
-        
-        return center;
-    }
-    
-    void ApplyWaterResistance()
-    {
-        // Basic water resistance
-        rb.linearDamping = waterDrag;
-        rb.angularDamping = waterAngularDrag;
-        
-        // Calculate relative velocity
-        Vector3 localVelocity = transform.InverseTransformDirection(rb.linearVelocity);
-        
-        // Apply directional resistance
-        Vector3 sideForce = -transform.right * localVelocity.x * sideResistance;
-        rb.AddForce(sideForce, ForceMode.Force);
-        
-        // Apply turning resistance
-        Vector3 turnForce = -transform.up * rb.angularVelocity.y * turningResistance;
-        rb.AddTorque(turnForce, ForceMode.Force);
-    }
-    
-    void ApplyStabilizationForces()
+
+    private void ApplyStabilization()
     {
         // Roll stabilization
-        float currentRoll = Vector3.Dot(transform.right, Vector3.up);
-        Vector3 rollCorrection = transform.forward * -currentRoll * rollStability;
-        rb.AddTorque(rollCorrection, ForceMode.Force);
-        
-        // Pitch stabilization
-        float currentPitch = Vector3.Dot(transform.forward, Vector3.up);
-        Vector3 pitchCorrection = transform.right * -currentPitch * pitchStability;
-        rb.AddTorque(pitchCorrection, ForceMode.Force);
-    }
-    
-    float CalculateSubmergedPercentage()
-    {
-        float shipBottom = boatCollider.bounds.min.y;
-        float shipHeight = boatCollider.bounds.size.y;
-        float submergedHeight = Mathf.Max(0, waterLevelY - shipBottom);
-        return Mathf.Clamp01(submergedHeight / shipHeight);
-    }
-    
-    void OnDrawGizmosSelected()
-    {
-        if (boatCollider != null)
+        Vector3 rotation = transform.rotation.eulerAngles;
+        if (rotation.z > 180) rotation.z -= 360;
+        if (rotation.z != 0)
         {
-            // Draw water level
-            Gizmos.color = new Color(0f, 0.7f, 1f, 0.3f);
-            Vector3 center = boatCollider.bounds.center;
-            Vector3 size = boatCollider.bounds.size;
-            Vector3 waterLineCenter = new Vector3(center.x, waterLevelY, center.z);
-            Gizmos.DrawCube(waterLineCenter, new Vector3(size.x * 1.5f, 0.1f, size.z * 1.5f));
-            
-            // Draw center of buoyancy
-            if (isInWater)
-            {
-                Gizmos.color = Color.red;
-                Gizmos.DrawWireSphere(CalculateCenterOfBuoyancy(), 0.3f);
-            }
+            float stabilizationTorque = -rotation.z * rollStability;
+            rb.AddTorque(0, 0, stabilizationTorque, ForceMode.Force);
         }
+
+        // Pitch stabilization
+        if (rotation.x > 180) rotation.x -= 360;
+        if (rotation.x != 0)
+        {
+            float stabilizationTorque = -rotation.x * pitchStability;
+            rb.AddTorque(stabilizationTorque, 0, 0, ForceMode.Force);
+        }
+    }
+
+    void OnValidate()
+    {
+        // Ensure reasonable value ranges
+        waterDrag = Mathf.Max(0, waterDrag);
+        waterAngularDrag = Mathf.Max(0, waterAngularDrag);
+        buoyancyForce = Mathf.Max(0, buoyancyForce);
+        waveHeight = Mathf.Max(0, waveHeight);
+        waveFrequency = Mathf.Max(0, waveFrequency);
     }
 }
