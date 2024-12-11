@@ -20,6 +20,7 @@ public class Ship : MonoBehaviour
     [SerializeField] protected float combatRange = 50f;
     [SerializeField] protected float armor = 1f;
     [SerializeField] protected float criticalHitMultiplier = 2f;
+    [SerializeField] protected float minEngagementDistance = 10f;
 
     protected float currentHealth;
     protected bool isSelected;
@@ -82,6 +83,7 @@ public class Ship : MonoBehaviour
         if (weapons.Count > 0)
         {
             CombatSystem.Instance?.RegisterShip(this, weapons);
+            Debug.Log($"[Ship] Registered {weapons.Count} weapons for {gameObject.name}");
         }
     }
 
@@ -107,20 +109,31 @@ public class Ship : MonoBehaviour
 
     public virtual void FireAtTarget(Ship target)
     {
-        if (target == null || target.Faction == this.Faction)
+        if (target == null || target.Faction == this.Faction || !CanEngageTarget(target))
+        {
+            Debug.Log($"[Ship] Cannot engage target from {gameObject.name}");
             return;
+        }
 
         OnTargetAcquired?.Invoke(target);
         CombatSystem.Instance?.InitiateCombat(this, target);
+        Debug.Log($"[Ship] {gameObject.name} firing at {target.Name}");
     }
 
     public virtual bool CanEngageTarget(Ship target)
     {
-        if (target == null || target.Faction == this.Faction)
+        if (target == null || target.Faction == this.Faction || IsSinking || currentHealth <= 0)
             return false;
 
         float distance = Vector3.Distance(transform.position, target.transform.position);
-        return distance <= combatRange && !IsSinking && currentHealth > 0;
+        bool inRange = distance <= combatRange && distance >= minEngagementDistance;
+
+        if (!inRange)
+        {
+            Debug.Log($"[Ship] Target out of range for {gameObject.name}. Distance: {distance}");
+        }
+
+        return inRange;
     }
 
     private void ValidateComponents()
@@ -162,11 +175,6 @@ public class Ship : MonoBehaviour
         shipName = newName;
     }
 
-    public void SetName(string newName)
-    {
-        shipName = newName;
-    }
-
     public virtual void SetOwner(IShipOwner newOwner)
     {
         Debug.Log($"[Ship] Setting owner for {gameObject.name} to {(newOwner != null ? newOwner.GetType().Name : "null")}");
@@ -188,6 +196,11 @@ public class Ship : MonoBehaviour
         {
             Deselect();
         }
+    }
+
+    public void SetName(string newName)
+    {
+        shipName = newName;
     }
 
     public virtual void ClearOwner()
@@ -235,6 +248,7 @@ public class Ship : MonoBehaviour
         currentHealth = Mathf.Max(0, currentHealth - finalDamage);
 
         OnDamageTaken?.Invoke(finalDamage);
+        Debug.Log($"[Ship] {gameObject.name} took {finalDamage} damage. Health: {currentHealth}");
 
         if (currentHealth <= sinkingThreshold && !isSinking)
         {
@@ -251,7 +265,7 @@ public class Ship : MonoBehaviour
         if (Random.value < 0.1f) // 10% chance
         {
             damageAfterArmor *= criticalHitMultiplier;
-            Debug.Log($"Critical hit on {shipName}!");
+            Debug.Log($"Critical hit on {shipName}! Damage: {damageAfterArmor}");
         }
 
         return damageAfterArmor;
@@ -260,6 +274,7 @@ public class Ship : MonoBehaviour
     protected virtual void StartSinking()
     {
         isSinking = true;
+        Debug.Log($"[Ship] {gameObject.name} starting to sink!");
         StartCoroutine(SinkingRoutine());
     }
 
@@ -331,10 +346,10 @@ public class Ship : MonoBehaviour
             Debug.LogWarning("Adjusted armor to default value (1)");
         }
 
-        if (combatRange <= 0)
+        if (combatRange <= minEngagementDistance)
         {
-            combatRange = 50f;
-            Debug.LogWarning("Adjusted combat range to default value (50)");
+            combatRange = minEngagementDistance * 2f;
+            Debug.LogWarning($"Adjusted combat range to {combatRange}");
         }
     }
 }
