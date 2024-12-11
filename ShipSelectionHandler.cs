@@ -11,8 +11,6 @@ public class ShipSelectionHandler : MonoBehaviour
     
     [Header("Material Settings")]
     [SerializeField]
-    private string[] highlightMeshNames = { "Hull", "Deck" }; // Specify which parts to highlight
-    [SerializeField]
     private Color highlightColor = new Color(1f, 1f, 0f, 0.3f); // Default to semi-transparent yellow
     [SerializeField]
     private float highlightIntensity = 0.5f;
@@ -78,25 +76,9 @@ public class ShipSelectionHandler : MonoBehaviour
 
     private void FindTargetRenderers()
     {
-        // Get all mesh renderers that match our highlight criteria
-        var allRenderers = GetComponentsInChildren<MeshRenderer>(true);
-        var highlightableRenderers = new System.Collections.Generic.List<MeshRenderer>();
-
-        foreach (var renderer in allRenderers)
-        {
-            // Check if this renderer's name contains any of our target mesh names
-            foreach (var meshName in highlightMeshNames)
-            {
-                if (renderer.name.Contains(meshName, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    highlightableRenderers.Add(renderer);
-                    break;
-                }
-            }
-        }
-
-        targetRenderers = highlightableRenderers.ToArray();
-        Debug.Log($"[ShipSelectionHandler] Found {targetRenderers.Length} highlightable renderers in {gameObject.name}");
+        // Get ALL mesh renderers in the ship
+        targetRenderers = GetComponentsInChildren<MeshRenderer>(true);
+        Debug.Log($"[ShipSelectionHandler] Found {targetRenderers.Length} renderers in {gameObject.name}");
     }
 
     private void StoreOriginalMaterials()
@@ -176,7 +158,6 @@ public class ShipSelectionHandler : MonoBehaviour
         {
             if (renderer != null)
             {
-                // Create a new material instance that combines original and highlight
                 Material highlightMat = new Material(selectedMaterial);
                 highlightMat.SetColor("_EmissionColor", highlightColor * highlightIntensity);
                 renderer.material = highlightMat;
