@@ -6,6 +6,7 @@ public class Buoyancy : MonoBehaviour
     [SerializeField] private float waveHeight = 0.2f;
     [SerializeField] private float waveFrequency = 1f;
     [SerializeField] private float waveSpeed = 1f;
+    [SerializeField] private float waterLevel = 0f;  // Base water level
     
     [Header("Ship Motion")]
     [SerializeField] private float rollStrength = 2f;    // Side-to-side rotation
@@ -19,6 +20,9 @@ public class Buoyancy : MonoBehaviour
     private Vector3 targetPosition;
     private Quaternion targetRotation;
     private float timeOffset;
+
+    // Public property to access water level
+    public float WaterLevel => waterLevel;
     
     private void Start()
     {
@@ -41,7 +45,7 @@ public class Buoyancy : MonoBehaviour
         
         // Calculate target position with wave offset
         targetPosition = transform.position;
-        targetPosition.y = waveOffset + verticalOffset;
+        targetPosition.y = waterLevel + waveOffset + verticalOffset;
         
         // Calculate rolling motion based on position and time
         float roll = 
