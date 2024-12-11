@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems; // Added for EventSystem
 
 public class InputManager : MonoBehaviour
 {
@@ -94,6 +95,13 @@ public class InputManager : MonoBehaviour
 
     private void HandleSelection()
     {
+        // Skip if clicking on UI
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+        {
+            Debug.Log("[InputManager] Clicked on UI - skipping selection");
+            return;
+        }
+
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
 
@@ -116,16 +124,19 @@ public class InputManager : MonoBehaviour
         else
         {
             Debug.Log("[InputManager] Selection raycast hit nothing");
-            // Only deselect if we didn't hit a ship - this prevents accidental deselection
-            if (!EventSystem.current.IsPointerOverGameObject())
-            {
-                OnShipSelected(null);
-            }
+            OnShipSelected(null);
         }
     }
 
     private void HandleMovement()
     {
+        // Skip if clicking on UI
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+        {
+            Debug.Log("[InputManager] Clicked on UI - skipping movement");
+            return;
+        }
+
         if (selectedShip == null)
         {
             Debug.LogWarning("[InputManager] No ship selected for movement");
