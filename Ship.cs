@@ -41,23 +41,8 @@ public class Ship : MonoBehaviour
         selectionHandler = GetComponent<ShipSelectionHandler>();
         currentHealth = maxHealth;
 
-        var collider = GetComponent<Collider>();
-        if (collider == null)
-        {
-            Debug.LogError($"[Ship] No Collider found on {gameObject.name}");
-        }
-
-        if (selectionHandler == null)
-        {
-            Debug.LogError($"[Ship] No ShipSelectionHandler found on {gameObject.name}");
-        }
-
-        Debug.Log($"[Ship] Components check for {gameObject.name}:\n" +
-                  $"- Rigidbody: {shipRigidbody != null}\n" +
-                  $"- Buoyancy: {buoyancyComponent != null}\n" +
-                  $"- Movement: {movementComponent != null}\n" +
-                  $"- Collider: {collider != null}\n" +
-                  $"- SelectionHandler: {selectionHandler != null}");
+        // Ensure proper component setup
+        ValidateComponents();
     }
 
     protected virtual void Start()
@@ -70,11 +55,51 @@ public class Ship : MonoBehaviour
         }
     }
 
+    private void ValidateComponents()
+    {
+        var collider = GetComponent<Collider>();
+        if (collider == null)
+        {
+            Debug.LogError($"[Ship] No Collider found on {gameObject.name}");
+            gameObject.AddComponent<BoxCollider>();
+            Debug.Log($"[Ship] Added BoxCollider to {gameObject.name}");
+        }
+
+        if (selectionHandler == null)
+        {
+            Debug.LogError($"[Ship] No ShipSelectionHandler found on {gameObject.name}");
+            selectionHandler = gameObject.AddComponent<ShipSelectionHandler>();
+            Debug.Log($"[Ship] Added ShipSelectionHandler to {gameObject.name}");
+        }
+
+        // Ensure ship is on correct layer
+        if (gameObject.layer != LayerMask.NameToLayer("Ship"))
+        {
+            SetLayerRecursively(gameObject, LayerMask.NameToLayer("Ship"));
+            Debug.Log($"[Ship] Set layer to Ship for {gameObject.name}");
+        }
+
+        Debug.Log($"[Ship] Components check for {gameObject.name}:\n" +
+                  $"- Rigidbody: {shipRigidbody != null}\n" +
+                  $"- Buoyancy: {buoyancyComponent != null}\n" +
+                  $"- Movement: {movementComponent != null}\n" +
+                  $"- Collider: {collider != null}\n" +
+                  $"- SelectionHandler: {selectionHandler != null}");
+    }
+
+    private void SetLayerRecursively(GameObject obj, int layer)
+    {
+        if (null == obj) return;
+        obj.layer = layer;
+        foreach (Transform child in obj.transform)
+            SetLayerRecursively(child.gameObject, layer);
+    }
+
     public virtual void Initialize(FactionType newFaction, string newName)
     {
         Debug.Log($"[Ship] Initializing {gameObject.name} with faction {newFaction} and name {newName}");
-        SetFaction(newFaction);
-        SetName(newName);
+        faction = newFaction;
+        shipName = newName;
     }
 
     public void SetName(string newName)
@@ -82,54 +107,56 @@ public class Ship : MonoBehaviour
         shipName = newName;
     }
 
-    public void SetFaction(FactionType newFaction)
-    {
-        // Only allow faction changes if the ship has no owner
-        if (owner != null)
-        {
-            Debug.LogWarning($"[Ship] Attempted to change faction of {shipName} while owned by {owner.GetType().Name}. Faction changes must be done through the owner.");
-            return;
-        }
-
-        Debug.Log($"[Ship] Setting faction for {shipName} from {faction} to {newFaction}");
-        faction = newFaction;
-    }
-
     public virtual void SetOwner(IShipOwner newOwner)
     {
         Debug.Log($"[Ship] Setting owner for {gameObject.name} to {(newOwner != null ? newOwner.GetType().Name : "null")}");
         
+        // First update the faction to match the new owner
         if (newOwner != null)
         {
-            // Validate faction matches owner's faction
-            if (newOwner.Faction != faction)
-            {
-                Debug.Log($"[Ship] Updating faction from {faction} to match new owner's faction {newOwner.Faction}");
-                faction = newOwner.Faction;
-            }
+            faction = newOwner.Faction;
+            Debug.Log($"[Ship] Updated faction to {faction} to match new owner");
         }
 
+        // Then handle owner reassignment
         if (owner != null && !ReferenceEquals(owner, newOwner))
         {
             owner.RemoveShip(this);
         }
 
         owner = newOwner;
+
+        // Validate selection state after ownership change
+        if (isSelected && !(owner is Player))
+        {
+            Deselect();
+        }
     }
 
     public virtual void ClearOwner()
     {
         Debug.Log($"[Ship] Clearing owner for {gameObject.name}");
+        if (isSelected)
+        {
+            Deselect();
+        }
         owner = null;
     }
 
     public virtual void Select()
     {
         Debug.Log($"[Ship] Selecting {gameObject.name}");
-        isSelected = true;
-        if (selectionHandler != null)
+        if (owner is Player)
         {
-            selectionHandler.Select();
+            isSelected = true;
+            if (selectionHandler != null)
+            {
+                selectionHandler.Select();
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[Ship] Cannot select {gameObject.name} - not owned by player");
         }
     }
 
