@@ -201,7 +201,7 @@ public class Ship : MonoBehaviour
                 buoyancyComponent != null)
             {
                 Vector3 splashPosition = transform.position + Random.insideUnitSphere * 2f;
-                splashPosition.y = buoyancyComponent.WaterLevel;
+                splashPosition.y = buoyancyComponent.waterLevel; // Changed from WaterLevel to waterLevel
                 Instantiate(waterSplashPrefab, splashPosition, Quaternion.identity);
             }
 
