@@ -30,8 +30,8 @@ public class AIShipController : MonoBehaviour
     {
         if (Time.time >= nextDecisionTime)
         {
-            // Simple patrol behavior
-            if (!movement.isMoving)
+            // Check if the ship is idle or stopped
+            if (!movement.IsMoving && movement.CurrentState == ShipState.Idle)
             {
                 Patrol();
             }
