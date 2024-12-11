@@ -11,7 +11,7 @@ public class ShipSelectionHandler : MonoBehaviour
     
     [Header("Material Settings")]
     [SerializeField]
-    private Color highlightColor = new Color(1f, 1f, 0f, 0.3f); // Default to semi-transparent yellow
+    private Color highlightColor = new Color(1f, 1f, 0f, 0.3f);
     [SerializeField]
     private float highlightIntensity = 0.5f;
     
@@ -32,6 +32,11 @@ public class ShipSelectionHandler : MonoBehaviour
     private void Awake()
     {
         InitializeHandler();
+        // Store original materials immediately after initialization
+        if (isInitialized)
+        {
+            StoreOriginalMaterials();
+        }
     }
 
     private void InitializeHandler()
@@ -47,11 +52,7 @@ public class ShipSelectionHandler : MonoBehaviour
             return;
         }
 
-        if (targetRenderers == null || targetRenderers.Length == 0)
-        {
-            FindTargetRenderers();
-            StoreOriginalMaterials();
-        }
+        FindTargetRenderers();
 
         if (gameObject.layer != LayerMask.NameToLayer("Ship"))
         {
@@ -63,22 +64,22 @@ public class ShipSelectionHandler : MonoBehaviour
             selectionIndicator.SetActive(false);
         }
 
-        // Initialize highlight material if needed
-        if (selectedMaterial != null)
-        {
-            selectedMaterial.SetColor("_EmissionColor", highlightColor * highlightIntensity);
-            selectedMaterial.SetFloat("_Metallic", 0.8f);
-            selectedMaterial.SetFloat("_Smoothness", 0.7f);
-        }
-
         isInitialized = true;
     }
 
     private void FindTargetRenderers()
     {
-        // Get ALL mesh renderers in the ship
         targetRenderers = GetComponentsInChildren<MeshRenderer>(true);
         Debug.Log($"[ShipSelectionHandler] Found {targetRenderers.Length} renderers in {gameObject.name}");
+
+        // Log all found renderers and their current materials
+        foreach (var renderer in targetRenderers)
+        {
+            if (renderer != null)
+            {
+                Debug.Log($"Found renderer: {renderer.name} with material: {renderer.sharedMaterial.name}");
+            }
+        }
     }
 
     private void StoreOriginalMaterials()
@@ -90,9 +91,9 @@ public class ShipSelectionHandler : MonoBehaviour
         {
             if (targetRenderers[i] != null)
             {
-                // Create instance of original material to avoid modifying the shared material
-                originalMaterials[i] = new Material(targetRenderers[i].sharedMaterial);
-                targetRenderers[i].material = originalMaterials[i];
+                // Store a reference to the original shared material
+                originalMaterials[i] = targetRenderers[i].sharedMaterial;
+                Debug.Log($"Stored original material for {targetRenderers[i].name}: {originalMaterials[i].name}");
             }
         }
     }
@@ -152,27 +153,35 @@ public class ShipSelectionHandler : MonoBehaviour
 
     private void ApplySelectedMaterial()
     {
-        if (selectedMaterial == null || targetRenderers == null) return;
+        if (selectedMaterial == null || targetRenderers == null)
+        {
+            Debug.LogError($"[ShipSelectionHandler] Missing materials or renderers on {gameObject.name}");
+            return;
+        }
 
         foreach (var renderer in targetRenderers)
         {
             if (renderer != null)
             {
-                Material highlightMat = new Material(selectedMaterial);
-                highlightMat.SetColor("_EmissionColor", highlightColor * highlightIntensity);
-                renderer.material = highlightMat;
+                Debug.Log($"Applying highlight material to {renderer.name}");
+                renderer.material = selectedMaterial;
             }
         }
     }
 
     private void RestoreOriginalMaterials()
     {
-        if (targetRenderers == null || originalMaterials == null) return;
+        if (targetRenderers == null || originalMaterials == null)
+        {
+            Debug.LogError($"[ShipSelectionHandler] Cannot restore materials - references are null on {gameObject.name}");
+            return;
+        }
 
         for (int i = 0; i < targetRenderers.Length; i++)
         {
             if (targetRenderers[i] != null && originalMaterials[i] != null)
             {
+                Debug.Log($"Restoring original material for {targetRenderers[i].name}: {originalMaterials[i].name}");
                 targetRenderers[i].material = originalMaterials[i];
             }
         }
@@ -180,7 +189,12 @@ public class ShipSelectionHandler : MonoBehaviour
 
     private void OnValidate()
     {
-        // Clamp values to reasonable ranges
         highlightIntensity = Mathf.Clamp(highlightIntensity, 0f, 2f);
+    }
+
+    private void OnDisable()
+    {
+        // Ensure materials are restored when the component is disabled
+        RestoreOriginalMaterials();
     }
 }
