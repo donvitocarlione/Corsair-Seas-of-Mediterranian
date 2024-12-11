@@ -4,21 +4,21 @@ public class Buoyancy : MonoBehaviour
 {
     [Header("Buoyancy Settings")]
     public float waterDensity = 1.5f;
-    public float waterLevel = 0f;
-    public float buoyancyForce = 25f;  // Further reduced from 50
-    public float waterDrag = 1.5f;     // Increased for more stability
-    public float waterAngularDrag = 1.5f; // Increased for more stability
+    public float waterLevel = 0f;  // Made public for access from Ship.cs
+    public float buoyancyForce = 25f;
+    public float waterDrag = 1.5f;
+    public float waterAngularDrag = 1.5f;
 
     [Header("Advanced Settings")]
     public float sideResistance = 3f;
     public float turningResistance = 2f;
     public bool useWaves = true;
-    public float waveHeight = 0.1f;     // Further reduced from 0.2
-    public float waveFrequency = 0.5f;  // Reduced for gentler waves
+    public float waveHeight = 0.1f;
+    public float waveFrequency = 0.5f;
 
     [Header("Stabilization")]
-    public float rollStability = 0.8f;   // Increased from 0.3
-    public float pitchStability = 0.6f;  // Increased from 0.2
+    public float rollStability = 0.8f;
+    public float pitchStability = 0.6f;
 
     [Header("Debug Info")]
     public float boatSubmergencePercentage = 10f;
@@ -52,6 +52,11 @@ public class Buoyancy : MonoBehaviour
         // Ensure the ship starts stable
         rb.velocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
+
+        // Configure rigidbody for better stability
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        rb.constraints = RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
     }
 
     void FixedUpdate()
@@ -81,6 +86,10 @@ public class Buoyancy : MonoBehaviour
         // Strong damping for vertical movement
         Vector3 verticalVelocity = Vector3.up * Vector3.Dot(rb.velocity, Vector3.up);
         rb.AddForce(-verticalVelocity * waterDrag, ForceMode.Acceleration);
+
+        // Apply additional horizontal damping
+        Vector3 horizontalVelocity = rb.velocity - verticalVelocity;
+        rb.AddForce(-horizontalVelocity * sideResistance, ForceMode.Acceleration);
 
         // Store current water movement for debugging
         waterMovement = rb.velocity;
@@ -121,5 +130,7 @@ public class Buoyancy : MonoBehaviour
         buoyancyForce = Mathf.Max(0, buoyancyForce);
         waveHeight = Mathf.Max(0, waveHeight);
         waveFrequency = Mathf.Max(0, waveFrequency);
+        rollStability = Mathf.Clamp(rollStability, 0, 1);
+        pitchStability = Mathf.Clamp(pitchStability, 0, 1);
     }
 }
