@@ -101,8 +101,10 @@ public class ShipSelectionHandler : MonoBehaviour
         {
             if (targetRenderers[i] != null)
             {
-                originalMaterials[i] = targetRenderers[i].material;
-                Debug.Log($"[ShipSelectionHandler] Stored original material for {targetRenderers[i].name}: {originalMaterials[i].name}");
+                // Create a new instance of the material to avoid modifying the shared material
+                originalMaterials[i] = new Material(targetRenderers[i].sharedMaterial);
+                targetRenderers[i].material = originalMaterials[i];
+                Debug.Log($"[ShipSelectionHandler] Stored original material for {targetRenderers[i].name}");
             }
         }
     }
