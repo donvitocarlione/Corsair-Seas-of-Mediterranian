@@ -2,58 +2,66 @@ using UnityEngine;
 
 public class Buoyancy : MonoBehaviour
 {
-    [Header("Buoyancy Settings")]
-    public float waterDensity = 1.5f;
-    public float waterLevel = 0f;
-    public float buoyancyForce = 150f;  // Increased for better floating
-    public float waterDrag = 3f;
-    
     [Header("Wave Settings")]
-    public bool useWaves = true;
-    public float waveHeight = 0.2f;
-    public float waveFrequency = 1f;
-
-    [Header("Debug Info")]
-    public float submergenceDepth;
-    public bool isInWater = true;
-
-    private Rigidbody rb;
-
-    void Start()
+    [SerializeField] private float waveHeight = 0.2f;
+    [SerializeField] private float waveFrequency = 1f;
+    [SerializeField] private float waveSpeed = 1f;
+    
+    [Header("Ship Motion")]
+    [SerializeField] private float rollStrength = 2f;    // Side-to-side rotation
+    [SerializeField] private float pitchStrength = 1f;   // Front-to-back rotation
+    [SerializeField] private float motionSmoothing = 0.5f;
+    
+    [Header("Position Offset")]
+    [SerializeField] private float verticalOffset = 0f;  // Base height above water
+    
+    // Internal variables
+    private Vector3 targetPosition;
+    private Quaternion targetRotation;
+    private float timeOffset;
+    
+    private void Start()
     {
-        rb = GetComponent<Rigidbody>();
-        if (rb == null)
-        {
-            Debug.LogError("Buoyancy requires a Rigidbody!");
-            enabled = false;
-            return;
-        }
+        // Generate a random time offset for each ship to prevent synchronized motion
+        timeOffset = Random.Range(0f, 100f);
     }
-
-    void FixedUpdate()
+    
+    private void Update()
     {
-        if (!isInWater) return;
-
-        // Calculate wave offset
-        float waveOffset = 0f;
-        if (useWaves)
-        {
-            waveOffset = Mathf.Sin(Time.time * waveFrequency) * waveHeight;
-        }
-
-        // Calculate and apply buoyancy
-        float waterHeightWithWaves = waterLevel + waveOffset;
-        submergenceDepth = waterHeightWithWaves - transform.position.y;
+        float time = Time.time + timeOffset;
         
-        if (submergenceDepth > 0)
-        {
-            // Basic water resistance
-            rb.AddForce(-rb.velocity * waterDrag, ForceMode.Acceleration);
+        // Calculate wave height at current position
+        float xPos = transform.position.x;
+        float zPos = transform.position.z;
+        
+        // Create more natural wave motion by combining multiple sine waves
+        float waveOffset = 
+            Mathf.Sin(time * waveFrequency + xPos * waveSpeed) * waveHeight * 0.6f +
+            Mathf.Sin(time * waveFrequency * 0.8f + zPos * waveSpeed * 1.2f) * waveHeight * 0.4f;
+        
+        // Calculate target position with wave offset
+        targetPosition = transform.position;
+        targetPosition.y = waveOffset + verticalOffset;
+        
+        // Calculate rolling motion based on position and time
+        float roll = 
+            Mathf.Sin(time * waveFrequency * 0.7f + xPos * 0.2f) * rollStrength +
+            Mathf.Sin(time * waveFrequency * 0.5f + zPos * 0.3f) * rollStrength * 0.5f;
             
-            // Main buoyancy force
-            float buoyancyMultiplier = Mathf.Clamp01(submergenceDepth);
-            Vector3 buoyancyForceVector = Vector3.up * buoyancyForce * buoyancyMultiplier;
-            rb.AddForceAtPosition(buoyancyForceVector, transform.position, ForceMode.Force);
-        }
+        // Calculate pitching motion
+        float pitch = 
+            Mathf.Sin(time * waveFrequency * 0.6f + zPos * 0.2f) * pitchStrength +
+            Mathf.Sin(time * waveFrequency * 0.4f + xPos * 0.3f) * pitchStrength * 0.5f;
+            
+        // Combine rotations
+        targetRotation = Quaternion.Euler(
+            pitch,
+            transform.rotation.eulerAngles.y, // Preserve current yaw (steering)
+            roll
+        );
+        
+        // Smoothly interpolate to target position and rotation
+        transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime / motionSmoothing);
+        transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime / motionSmoothing);
     }
 }
