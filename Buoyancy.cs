@@ -6,65 +6,63 @@ public class Buoyancy : MonoBehaviour
     [SerializeField] private float waveHeight = 0.2f;
     [SerializeField] private float waveFrequency = 1f;
     [SerializeField] private float waveSpeed = 1f;
-    [SerializeField] private float waterLevel = 0f;  // Base water level
+    [SerializeField] private float waterLevel = 0f;
     
     [Header("Ship Motion")]
-    [SerializeField] private float rollStrength = 2f;    // Side-to-side rotation
-    [SerializeField] private float pitchStrength = 1f;   // Front-to-back rotation
+    [SerializeField] private float rollStrength = 2f;
+    [SerializeField] private float pitchStrength = 1f;
     [SerializeField] private float motionSmoothing = 0.5f;
     
     [Header("Position Offset")]
-    [SerializeField] private float verticalOffset = 0f;  // Base height above water
+    [SerializeField] private float verticalOffset = 2f;  // Increased to lift ships higher
     
-    // Internal variables
     private Vector3 targetPosition;
     private Quaternion targetRotation;
     private float timeOffset;
-
-    // Public property to access water level
+    
     public float WaterLevel => waterLevel;
     
     private void Start()
     {
-        // Generate a random time offset for each ship to prevent synchronized motion
         timeOffset = Random.Range(0f, 100f);
+        
+        // Set initial position above water
+        Vector3 pos = transform.position;
+        pos.y = waterLevel + verticalOffset;
+        transform.position = pos;
     }
     
-    private void Update()
+    private void LateUpdate()  // Changed to LateUpdate to run after movement
     {
         float time = Time.time + timeOffset;
-        
-        // Calculate wave height at current position
         float xPos = transform.position.x;
         float zPos = transform.position.z;
         
-        // Create more natural wave motion by combining multiple sine waves
+        // Calculate wave offset
         float waveOffset = 
             Mathf.Sin(time * waveFrequency + xPos * waveSpeed) * waveHeight * 0.6f +
             Mathf.Sin(time * waveFrequency * 0.8f + zPos * waveSpeed * 1.2f) * waveHeight * 0.4f;
         
-        // Calculate target position with wave offset
+        // Keep current X and Z, only modify Y based on waves
         targetPosition = transform.position;
-        targetPosition.y = waterLevel + waveOffset + verticalOffset;
+        targetPosition.y = waterLevel + verticalOffset + waveOffset;
         
-        // Calculate rolling motion based on position and time
+        // Calculate ship rotation
         float roll = 
             Mathf.Sin(time * waveFrequency * 0.7f + xPos * 0.2f) * rollStrength +
             Mathf.Sin(time * waveFrequency * 0.5f + zPos * 0.3f) * rollStrength * 0.5f;
             
-        // Calculate pitching motion
         float pitch = 
             Mathf.Sin(time * waveFrequency * 0.6f + zPos * 0.2f) * pitchStrength +
             Mathf.Sin(time * waveFrequency * 0.4f + xPos * 0.3f) * pitchStrength * 0.5f;
             
-        // Combine rotations
         targetRotation = Quaternion.Euler(
             pitch,
-            transform.rotation.eulerAngles.y, // Preserve current yaw (steering)
+            transform.rotation.eulerAngles.y,
             roll
         );
         
-        // Smoothly interpolate to target position and rotation
+        // Apply position and rotation changes
         transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime / motionSmoothing);
         transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime / motionSmoothing);
     }

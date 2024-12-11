@@ -11,124 +11,84 @@ public enum ShipState
 public class ShipMovement : MonoBehaviour
 {
     [Header("Ship Characteristics")]
-    public float mass = 1000f;
-    public float windResistance = 1f;
-    public float waterResistance = 2f;
-    public float minSpeedForTurning = 0.1f;
-
+    public float maxSpeed = 5f;
+    public float turnSpeed = 90f;
+    
     [Header("Movement Settings")]
-    public float baseSpeed = 5f;
-    public float baseTurnSpeed = 90f;
     public float acceleration = 1f;
     public float deceleration = 0.5f;
     public float stoppingDistance = 1f;
-
+    public float minSpeedForTurning = 0.1f;
+    
     [Header("Movement Modifiers")]
     public float speedMultiplier = 1f;
     public float turnSpeedMultiplier = 1f;
-    public bool isMoving { get; private set; }
-
-    private Rigidbody rb;
+    
     private Vector3 targetPosition;
-    private Vector3 currentVelocity;
     private Quaternion targetRotation;
     private ShipState currentState = ShipState.Idle;
     private float currentSpeed = 0f;
-
-    void Start()
-    {
-        rb = GetComponent<Rigidbody>();
-        if (rb == null)
-        {
-            Debug.LogError("Ship needs a Rigidbody!");
-            enabled = false;
-            return;
-        }
-
-        InitializePhysics();
-    }
-
-    private void InitializePhysics()
-    {
-        rb.useGravity = true;
-        rb.mass = mass;
-        rb.linearDamping = waterResistance;
-        rb.angularDamping = windResistance;
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | 
-                        RigidbodyConstraints.FreezeRotationZ;
-    }
-
-    public void ApplyNavigationBonus(float bonus)
-    {
-        speedMultiplier = bonus;
-        turnSpeedMultiplier = Mathf.Lerp(1f, bonus, 0.5f);
-    }
-
-    public void ResetNavigationBonus()
-    {
-        speedMultiplier = 1f;
-        turnSpeedMultiplier = 1f;
-    }
-
+    private bool isMoving;
+    
     public void SetTargetPosition(Vector3 position)
     {
         targetPosition = position;
-        targetPosition.y = transform.position.y;
+        targetPosition.y = transform.position.y;  // Maintain current height
         isMoving = true;
-        currentState = ShipState.Moving;
-
-        Vector3 directionToTarget = (targetPosition - transform.position).normalized;
-        if (directionToTarget != Vector3.zero)
+        
+        // Calculate rotation to face target
+        Vector3 direction = (targetPosition - transform.position).normalized;
+        if (direction != Vector3.zero)
         {
-            float targetAngle = Mathf.Atan2(directionToTarget.x, directionToTarget.z) * Mathf.Rad2Deg;
+            float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
             targetRotation = Quaternion.Euler(0, targetAngle, 0);
             currentState = ShipState.Turning;
         }
     }
-
+    
     public void StopMovement()
     {
-        targetPosition = Vector3.zero;
         isMoving = false;
-        currentVelocity = Vector3.zero;
-        currentState = ShipState.Stopping;
         currentSpeed = 0f;
+        currentState = ShipState.Stopping;
     }
-
-    void FixedUpdate()
+    
+    private void Update()
     {
         switch (currentState)
         {
-            case ShipState.Moving:
             case ShipState.Turning:
-                RotateTowardsTarget();
-                MoveTowardsTarget();
+                HandleRotation();
+                break;
+                
+            case ShipState.Moving:
+                HandleMovement();
                 break;
                 
             case ShipState.Stopping:
-                ApplyBraking();
+                HandleStopping();
                 break;
         }
-        
-        ApplyWaterPhysics();
-        ApplyWindPhysics();
     }
-
-    private void RotateTowardsTarget()
+    
+    private void HandleRotation()
     {
-        if (currentSpeed < minSpeedForTurning) return;
+        if (currentSpeed < minSpeedForTurning) 
+        {
+            currentSpeed += acceleration * Time.deltaTime;
+            return;
+        }
         
-        float currentTurnSpeed = baseTurnSpeed * turnSpeedMultiplier;
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 
-            currentTurnSpeed * Time.fixedDeltaTime);
-
+        float step = turnSpeed * turnSpeedMultiplier * Time.deltaTime;
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, step);
+        
         if (Quaternion.Angle(transform.rotation, targetRotation) < 1f)
         {
             currentState = ShipState.Moving;
         }
     }
-
-    private void MoveTowardsTarget()
+    
+    private void HandleMovement()
     {
         if (!isMoving) return;
         
@@ -140,58 +100,40 @@ public class ShipMovement : MonoBehaviour
             return;
         }
         
-        // Calculate desired speed based on distance
-        float desiredSpeed = Mathf.Min(
-            baseSpeed * speedMultiplier,
-            Mathf.Sqrt(2f * acceleration * distanceToTarget)
-        );
+        // Accelerate/decelerate smoothly
+        float targetSpeed = maxSpeed * speedMultiplier;
+        currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, acceleration * Time.deltaTime);
         
-        // Apply smooth acceleration/deceleration
-        currentSpeed = Mathf.MoveTowards(
-            currentSpeed,
-            desiredSpeed,
-            (desiredSpeed > currentSpeed ? acceleration : deceleration) * Time.fixedDeltaTime
-        );
-        
-        // Calculate movement direction
-        Vector3 moveDirection = transform.forward;
-        Vector3 targetVelocity = moveDirection * currentSpeed;
-        
-        // Apply movement
-        rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, targetVelocity, Time.fixedDeltaTime);
-    }
-
-    private void ApplyWaterPhysics()
-    {
-        // Apply water resistance based on speed
-        float resistance = waterResistance * rb.linearVelocity.magnitude * rb.linearVelocity.magnitude;
-        rb.AddForce(-rb.linearVelocity.normalized * resistance);
-        
-        // Apply wave effects
-        float waveHeight = Mathf.Sin(Time.time * 0.5f) * 0.1f;
-        rb.AddForce(Vector3.up * waveHeight, ForceMode.Acceleration);
+        // Move forward
+        Vector3 movement = transform.forward * currentSpeed * Time.deltaTime;
+        Vector3 newPosition = transform.position + movement;
+        newPosition.y = transform.position.y;  // Maintain height from buoyancy
+        transform.position = newPosition;
     }
     
-    private void ApplyWindPhysics()
+    private void HandleStopping()
     {
-        // Simplified wind effect (you can integrate with a weather system later)
-        Vector3 windDirection = new Vector3(Mathf.Sin(Time.time * 0.1f), 0, Mathf.Cos(Time.time * 0.1f));
-        float windStrength = 0.5f + Mathf.Sin(Time.time * 0.05f) * 0.5f;
-        
-        // Calculate wind effect based on ship's orientation
-        float windEffect = Vector3.Dot(windDirection, transform.forward);
-        rb.AddForce(windDirection * windStrength * windEffect * windResistance);
-    }
-
-    private void ApplyBraking()
-    {
-        if (rb.linearVelocity.magnitude < 0.01f)
+        if (currentSpeed > 0)
         {
-            rb.linearVelocity = Vector3.zero;
-            currentState = ShipState.Idle;
-            return;
+            currentSpeed = Mathf.MoveTowards(currentSpeed, 0, deceleration * Time.deltaTime);
+            Vector3 movement = transform.forward * currentSpeed * Time.deltaTime;
+            transform.position += movement;
         }
-        
-        rb.AddForce(-rb.linearVelocity * deceleration, ForceMode.Acceleration);
+        else
+        {
+            currentState = ShipState.Idle;
+        }
+    }
+    
+    public void ApplyNavigationBonus(float bonus)
+    {
+        speedMultiplier = bonus;
+        turnSpeedMultiplier = Mathf.Lerp(1f, bonus, 0.5f);
+    }
+    
+    public void ResetNavigationBonus()
+    {
+        speedMultiplier = 1f;
+        turnSpeedMultiplier = 1f;
     }
 }
