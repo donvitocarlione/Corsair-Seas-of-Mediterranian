@@ -9,6 +9,14 @@ public class ShipSelectionHandler : MonoBehaviour
     [SerializeField]
     private GameObject selectionIndicator;
     
+    [Header("Material Settings")]
+    [SerializeField]
+    private string[] highlightMeshNames = { "Hull", "Deck" }; // Specify which parts to highlight
+    [SerializeField]
+    private Color highlightColor = new Color(1f, 1f, 0f, 0.3f); // Default to semi-transparent yellow
+    [SerializeField]
+    private float highlightIntensity = 0.5f;
+    
     [Header("Selection Settings")]
     [SerializeField]
     private LayerMask selectableLayerMask = Physics.DefaultRaycastLayers;
@@ -30,10 +38,10 @@ public class ShipSelectionHandler : MonoBehaviour
 
     private void InitializeHandler()
     {
-        // Always try to initialize
+        if (isInitialized) return;
+
         Debug.Log($"[ShipSelectionHandler] Initializing handler for {gameObject.name}");
         
-        // Get ship reference
         shipReference = GetComponent<Ship>();
         if (shipReference == null)
         {
@@ -41,41 +49,54 @@ public class ShipSelectionHandler : MonoBehaviour
             return;
         }
 
-        // Find all renderers in the ship hierarchy if not already found
         if (targetRenderers == null || targetRenderers.Length == 0)
         {
             FindTargetRenderers();
             StoreOriginalMaterials();
         }
 
-        // Ensure this object is on the correct layer
         if (gameObject.layer != LayerMask.NameToLayer("Ship"))
         {
             SetLayerRecursively(gameObject, LayerMask.NameToLayer("Ship"));
         }
 
-        // Hide selection indicator at start
         if (selectionIndicator != null)
         {
             selectionIndicator.SetActive(false);
         }
 
+        // Initialize highlight material if needed
+        if (selectedMaterial != null)
+        {
+            selectedMaterial.SetColor("_EmissionColor", highlightColor * highlightIntensity);
+            selectedMaterial.SetFloat("_Metallic", 0.8f);
+            selectedMaterial.SetFloat("_Smoothness", 0.7f);
+        }
+
         isInitialized = true;
-        Debug.Log($"[ShipSelectionHandler] Initialization complete for {gameObject.name}");
     }
 
     private void FindTargetRenderers()
     {
-        // Get all mesh renderers in children
-        targetRenderers = GetComponentsInChildren<MeshRenderer>(true); // Include inactive objects
-        
-        if (targetRenderers == null || targetRenderers.Length == 0)
+        // Get all mesh renderers that match our highlight criteria
+        var allRenderers = GetComponentsInChildren<MeshRenderer>(true);
+        var highlightableRenderers = new System.Collections.Generic.List<MeshRenderer>();
+
+        foreach (var renderer in allRenderers)
         {
-            Debug.LogError($"[ShipSelectionHandler] No mesh renderers found in {gameObject.name}");
-            return;
+            // Check if this renderer's name contains any of our target mesh names
+            foreach (var meshName in highlightMeshNames)
+            {
+                if (renderer.name.Contains(meshName, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    highlightableRenderers.Add(renderer);
+                    break;
+                }
+            }
         }
 
-        Debug.Log($"[ShipSelectionHandler] Found {targetRenderers.Length} renderers in {gameObject.name}");
+        targetRenderers = highlightableRenderers.ToArray();
+        Debug.Log($"[ShipSelectionHandler] Found {targetRenderers.Length} highlightable renderers in {gameObject.name}");
     }
 
     private void StoreOriginalMaterials()
@@ -87,8 +108,9 @@ public class ShipSelectionHandler : MonoBehaviour
         {
             if (targetRenderers[i] != null)
             {
-                // Store a reference to the original shared material
-                originalMaterials[i] = targetRenderers[i].sharedMaterial;
+                // Create instance of original material to avoid modifying the shared material
+                originalMaterials[i] = new Material(targetRenderers[i].sharedMaterial);
+                targetRenderers[i].material = originalMaterials[i];
             }
         }
     }
@@ -135,49 +157,29 @@ public class ShipSelectionHandler : MonoBehaviour
     {
         if (!isInitialized)
         {
-            InitializeHandler(); // Try to initialize if not done
+            InitializeHandler();
         }
 
-        if (shipReference == null)
+        if (shipReference == null || shipReference.ShipOwner == null)
         {
-            Debug.LogError($"[ShipSelectionHandler] Cannot select - shipReference is null on {gameObject.name}");
             return false;
         }
 
-        if (shipReference.ShipOwner == null)
-        {
-            Debug.LogError($"[ShipSelectionHandler] Cannot select - ship has no owner on {gameObject.name}");
-            return false;
-        }
-
-        if (!(shipReference.ShipOwner is Player))
-        {
-            Debug.LogWarning($"[ShipSelectionHandler] Cannot select - ship's owner is not a Player on {gameObject.name}");
-            return false;
-        }
-
-        return true;
+        return shipReference.ShipOwner is Player;
     }
 
     private void ApplySelectedMaterial()
     {
-        if (selectedMaterial == null)
-        {
-            Debug.LogError($"[ShipSelectionHandler] Selected material is not assigned on {gameObject.name}");
-            return;
-        }
-
-        if (targetRenderers == null)
-        {
-            FindTargetRenderers();
-            if (targetRenderers == null) return;
-        }
+        if (selectedMaterial == null || targetRenderers == null) return;
 
         foreach (var renderer in targetRenderers)
         {
             if (renderer != null)
             {
-                renderer.material = selectedMaterial;
+                // Create a new material instance that combines original and highlight
+                Material highlightMat = new Material(selectedMaterial);
+                highlightMat.SetColor("_EmissionColor", highlightColor * highlightIntensity);
+                renderer.material = highlightMat;
             }
         }
     }
@@ -193,5 +195,11 @@ public class ShipSelectionHandler : MonoBehaviour
                 targetRenderers[i].material = originalMaterials[i];
             }
         }
+    }
+
+    private void OnValidate()
+    {
+        // Clamp values to reasonable ranges
+        highlightIntensity = Mathf.Clamp(highlightIntensity, 0f, 2f);
     }
 }
